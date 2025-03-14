@@ -34,6 +34,8 @@ pipe = pipe.to(device="cuda", dtype=torch.bfloat16)
 
 dataset = TextDataset(args.prompt_file_path)
 
+os.makedirs(args.output_folder, exist_ok=True)
+
 for index in tqdm(range(len(dataset))):
     prompt = dataset[index]
     video = pipe.inference(

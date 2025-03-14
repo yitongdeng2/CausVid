@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 from tqdm import tqdm
 import argparse
 import torch
-import os 
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config_path", type=str)
@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 torch.set_grad_enabled(False)
 
-config = OmegaConf.load(args.config_path) 
+config = OmegaConf.load(args.config_path)
 
 pipeline = InferencePipeline(config, device="cuda")
 pipeline.to(device="cuda", dtype=torch.bfloat16)
@@ -34,6 +34,8 @@ dataset = TextDataset(args.prompt_file_path)
 sampled_noise = torch.randn(
     [1, 21, 16, 60, 104], device="cuda", dtype=torch.bfloat16
 )
+
+os.makedirs(args.output_folder, exist_ok=True)
 
 for prompt_index in tqdm(range(len(dataset))):
     prompts = [dataset[prompt_index]]

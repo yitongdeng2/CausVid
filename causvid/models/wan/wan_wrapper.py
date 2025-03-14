@@ -9,7 +9,7 @@ from causvid.models.wan.wan_base.modules.vae import _video_vae
 from causvid.models.wan.wan_base.modules.t5 import umt5_xxl
 from causvid.models.wan.flow_match import FlowMatchScheduler
 from causvid.models.wan.causal_model import CausalWanModel
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import torch
 
 
@@ -160,8 +160,10 @@ class WanDiffusionWrapper(DiffusionModelInterface):
 
     def forward(
         self, noisy_image_or_video: torch.Tensor, conditional_dict: dict,
-        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None,
-        current_end: int = None
+        timestep: torch.Tensor, kv_cache: Optional[List[dict]] = None,
+        crossattn_cache: Optional[List[dict]] = None,
+        current_start: Optional[int] = None,
+        current_end: Optional[int] = None
     ) -> torch.Tensor:
         prompt_embeds = conditional_dict["prompt_embeds"]
 
@@ -177,6 +179,7 @@ class WanDiffusionWrapper(DiffusionModelInterface):
                 t=input_timestep, context=prompt_embeds,
                 seq_len=self.seq_len,
                 kv_cache=kv_cache,
+                crossattn_cache=crossattn_cache,
                 current_start=current_start,
                 current_end=current_end
             ).permute(0, 2, 1, 3, 4)

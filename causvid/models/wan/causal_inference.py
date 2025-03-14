@@ -47,7 +47,6 @@ class InferencePipeline(torch.nn.Module):
         Initialize a Per-GPU KV cache for the Wan model.
         """
         kv_cache1 = []
-        kv_cache2 = []
 
         for _ in range(self.num_transformer_blocks):
             kv_cache1.append({
@@ -55,116 +54,22 @@ class InferencePipeline(torch.nn.Module):
                 "v": torch.zeros([batch_size, 32760, 12, 128], dtype=dtype, device=device)
             })
 
-            kv_cache2.append({
-                "k": torch.zeros([batch_size, 32760, 12, 128], dtype=dtype, device=device),
-                "v": torch.zeros([batch_size, 32760, 12, 128], dtype=dtype, device=device)
+        self.kv_cache1 = kv_cache1  # always store the clean cache
+
+    def _initialize_crossattn_cache(self, batch_size, dtype, device):
+        """
+        Initialize a Per-GPU cross-attention cache for the Wan model.
+        """
+        crossattn_cache = []
+
+        for _ in range(self.num_transformer_blocks):
+            crossattn_cache.append({
+                "k": torch.zeros([batch_size, 512, 12, 128], dtype=dtype, device=device),
+                "v": torch.zeros([batch_size, 512, 12, 128], dtype=dtype, device=device),
+                "is_init": False
             })
 
-        self.kv_cache1 = kv_cache1  # always store the clean cache
-        self.kv_cache2 = kv_cache2  # always store the noisy cache
-
-    def two_pass_inference(self, noise: torch.Tensor, text_prompts: List[str]) -> torch.Tensor:
-        """
-        Perform inference on the given noise and text prompts.
-        Inputs:
-            noise (torch.Tensor): The input noise tensor of shape
-                (batch_size, num_frames, num_channels, height, width).
-            text_prompts (List[str]): The list of text prompts.
-        Outputs:
-            video (torch.Tensor): The generated video tensor of shape
-                (batch_size, num_frames, num_channels, height, width). It is normalized to be in the range [0, 1].
-        """
-        batch_size, num_frames, num_channels, height, width = noise.shape
-        conditional_dict = self.text_encoder(
-            text_prompts=text_prompts
-        )
-
-        output = torch.zeros(
-            [batch_size, num_frames, num_channels, height, width],
-            device=noise.device,
-            dtype=noise.dtype
-        )
-
-        # Step 1: Initialize KV cache
-        if self.kv_cache1 is None:
-            self._initialize_kv_cache(
-                batch_size=batch_size,
-                dtype=noise.dtype,
-                device=noise.device
-            )
-
-        # Step 2: Temporal denoising loop
-        num_blocks = num_frames // self.num_frame_per_block
-        for block_index in range(num_blocks):
-            noisy_input = noise[:, block_index *
-                                self.num_frame_per_block:(block_index+1)*self.num_frame_per_block]
-
-            # Step 2.1: Spatial denoising loop
-            for index, current_timestep in enumerate(self.denoising_step_list):
-                # set current timestep
-                timestep = torch.ones(
-                    [batch_size, self.num_frame_per_block], device=noise.device, dtype=torch.int64) * current_timestep
-
-                if index < len(self.denoising_step_list) - 1:
-                    denoised_pred = self.generator(
-                        noisy_image_or_video=noisy_input,
-                        conditional_dict=conditional_dict,
-                        timestep=timestep,
-                        kv_cache=self.kv_cache2,
-                        current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
-                        current_end=(
-                            block_index+1)*self.num_frame_per_block * self.frame_seq_length
-                    )
-                    next_timestep = self.denoising_step_list[index + 1]
-                    noisy_input = self.scheduler.add_noise(
-                        denoised_pred.flatten(0, 1),
-                        torch.randn_like(denoised_pred.flatten(0, 1)),
-                        next_timestep *
-                        torch.ones([batch_size], device="cuda",
-                                   dtype=torch.long)
-                    ).unflatten(0, denoised_pred.shape[:2])
-                else:
-                    # Two Passes
-                    # for updating kv_cache 2
-                    _ = self.generator(
-                        noisy_image_or_video=noisy_input,
-                        conditional_dict=conditional_dict,
-                        timestep=timestep,
-                        kv_cache=self.kv_cache2,
-                        current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
-                        current_end=(
-                            block_index+1)*self.num_frame_per_block * self.frame_seq_length
-                    )
-
-                    # for getting real output
-                    denoised_pred = self.generator(
-                        noisy_image_or_video=noisy_input,
-                        conditional_dict=conditional_dict,
-                        timestep=timestep,
-                        kv_cache=self.kv_cache1,
-                        current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
-                        current_end=(
-                            block_index+1)*self.num_frame_per_block * self.frame_seq_length
-                    )
-
-            # Step 2.2: rerun with timestep zero to update the cache
-            output[:, block_index*self.num_frame_per_block:(
-                block_index+1)*self.num_frame_per_block] = denoised_pred
-
-            self.generator(
-                noisy_image_or_video=denoised_pred,
-                conditional_dict=conditional_dict,
-                timestep=timestep * 0,
-                kv_cache=self.kv_cache1,
-                current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
-                current_end=(block_index+1) *
-                self.num_frame_per_block * self.frame_seq_length
-            )
-
-        # Step 3: Decode the output
-        video = self.vae.decode_to_pixel(output)
-        video = (video * 0.5 + 0.5).clamp(0, 1)
-        return video
+        self.crossattn_cache = crossattn_cache  # always store the clean cache
 
     def inference(self, noise: torch.Tensor, text_prompts: List[str], start_latents: Optional[torch.Tensor] = None, return_latents: bool = False) -> torch.Tensor:
         """
@@ -196,6 +101,16 @@ class InferencePipeline(torch.nn.Module):
                 device=noise.device
             )
 
+            self._initialize_crossattn_cache(
+                batch_size=batch_size,
+                dtype=noise.dtype,
+                device=noise.device
+            )
+        else:
+            # reset cross attn cache
+            for block_index in range(self.num_transformer_blocks):
+                self.crossattn_cache[block_index]["is_init"] = False
+
         num_input_blocks = start_latents.shape[1] // self.num_frame_per_block if start_latents is not None else 0
 
         # Step 2: Temporal denoising loop
@@ -218,6 +133,7 @@ class InferencePipeline(torch.nn.Module):
                     conditional_dict=conditional_dict,
                     timestep=timestep * 0,
                     kv_cache=self.kv_cache1,
+                    crossattn_cache=self.crossattn_cache,
                     current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
                     current_end=(block_index+1) *
                     self.num_frame_per_block * self.frame_seq_length
@@ -236,6 +152,7 @@ class InferencePipeline(torch.nn.Module):
                         conditional_dict=conditional_dict,
                         timestep=timestep,
                         kv_cache=self.kv_cache1,
+                        crossattn_cache=self.crossattn_cache,
                         current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
                         current_end=(
                             block_index+1)*self.num_frame_per_block * self.frame_seq_length
@@ -255,6 +172,7 @@ class InferencePipeline(torch.nn.Module):
                         conditional_dict=conditional_dict,
                         timestep=timestep,
                         kv_cache=self.kv_cache1,
+                        crossattn_cache=self.crossattn_cache,
                         current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
                         current_end=(
                             block_index+1)*self.num_frame_per_block * self.frame_seq_length
@@ -269,6 +187,7 @@ class InferencePipeline(torch.nn.Module):
                 conditional_dict=conditional_dict,
                 timestep=timestep * 0,
                 kv_cache=self.kv_cache1,
+                crossattn_cache=self.crossattn_cache,
                 current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
                 current_end=(block_index+1) *
                 self.num_frame_per_block * self.frame_seq_length

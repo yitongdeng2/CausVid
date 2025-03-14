@@ -202,6 +202,7 @@ class CausalWanAttentionBlock(nn.Module):
         context_lens,
         block_mask,
         kv_cache=None,
+        crossattn_cache=None,
         current_start=0,
         current_end=0
     ):
@@ -231,8 +232,9 @@ class CausalWanAttentionBlock(nn.Module):
                  * e[2]).flatten(1, 2)
 
         # cross-attention & ffn function
-        def cross_attn_ffn(x, context, context_lens, e):
-            x = x + self.cross_attn(self.norm3(x), context, context_lens)
+        def cross_attn_ffn(x, context, context_lens, e, crossattn_cache=None):
+            x = x + self.cross_attn(self.norm3(x), context,
+                                    context_lens, crossattn_cache=crossattn_cache)
             y = self.ffn(
                 (self.norm2(x).unflatten(dim=1, sizes=(num_frames,
                  frame_seqlen)) * (1 + e[4]) + e[3]).flatten(1, 2)
@@ -242,7 +244,7 @@ class CausalWanAttentionBlock(nn.Module):
                      frame_seqlen)) * e[5]).flatten(1, 2)
             return x
 
-        x = cross_attn_ffn(x, context, context_lens, e)
+        x = cross_attn_ffn(x, context, context_lens, e, crossattn_cache)
         return x
 
 
@@ -465,6 +467,7 @@ class CausalWanModel(ModelMixin, ConfigMixin):
         clip_fea=None,
         y=None,
         kv_cache: dict = None,
+        crossattn_cache: dict = None,
         current_start: int = 0,
         current_end: int = 0
     ):
@@ -561,6 +564,7 @@ class CausalWanModel(ModelMixin, ConfigMixin):
                 kwargs.update(
                     {
                         "kv_cache": kv_cache[block_index],
+                        "crossattn_cache": crossattn_cache[block_index],
                         "current_start": current_start,
                         "current_end": current_end
                     }

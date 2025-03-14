@@ -13,7 +13,7 @@ parser.add_argument("--config_path", type=str)
 parser.add_argument("--checkpoint_folder", type=str)
 parser.add_argument("--prompt_file_path", type=str)
 parser.add_argument("--output_folder", type=str)
-parser.add_argument("--num_rollout", type=int, default=3)   
+parser.add_argument("--num_rollout", type=int, default=3)
 
 args = parser.parse_args()
 
@@ -33,7 +33,9 @@ pipeline.generator.load_state_dict(
 
 dataset = TextDataset(args.prompt_file_path)
 
-num_rollout = args.num_rollout 
+num_rollout = args.num_rollout
+
+os.makedirs(args.output_folder, exist_ok=True)
 
 
 def encode(self, videos: torch.Tensor) -> torch.Tensor:

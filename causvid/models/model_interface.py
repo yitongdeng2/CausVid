@@ -1,6 +1,6 @@
 from causvid.scheduler import SchedulerInterface
 from abc import abstractmethod, ABC
-from typing import List
+from typing import List, Optional
 import torch
 import types
 
@@ -11,8 +11,10 @@ class DiffusionModelInterface(ABC, torch.nn.Module):
     @abstractmethod
     def forward(
         self, noisy_image_or_video: torch.Tensor, conditional_dict: dict,
-        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None,
-        current_end: int = None
+        timestep: torch.Tensor, kv_cache: Optional[List[dict]] = None,
+        crossattn_cache: Optional[List[dict]] = None,
+        current_start: Optional[int] = None,
+        current_end: Optional[int] = None
     ) -> torch.Tensor:
         """
         A method to run diffusion model. 

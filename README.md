@@ -91,7 +91,7 @@ torchrun --nproc_per_node 8 causvid/models/wan/generate_ode_pairs.py --output_fo
 python causvid/ode_data/create_lmdb_iterative.py  --data_path XXX --lmdb_path XXX 
 ```
 
-Causal ODE Pretraining 
+Causal ODE Pretraining. You can also skip this step and download the ode finetuned checkpoint from [here](https://huggingface.co/tianweiy/CausVid/tree/main/wan_causal_ode_checkpoint_model_003000) 
 
 ```bash
 torchrun --nnodes 8 --nproc_per_node=8 --rdzv_id=5235 \
