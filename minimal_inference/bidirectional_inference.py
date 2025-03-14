@@ -45,4 +45,4 @@ for index in tqdm(range(len(dataset))):
     )[0].permute(1, 2, 3, 0).cpu().numpy()
 
     export_to_video(
-        video, os.path.join(args.output_folder, f"output_{prompt_index:03d}.mp4"), fps=16)
+        video, os.path.join(args.output_folder, f"output_{index:03d}.mp4"), fps=16)
