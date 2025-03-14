@@ -112,7 +112,8 @@ torchrun --nnodes 8 --nproc_per_node=8 --rdzv_id=5235 \
 
 ## TODO 
 - [ ] Checkpoints trained on larger / higher quality dataset.    
-- [ ] Image to Video Generation 
+- [ ] Image to Video Generation
+- [ ] Caching of cross-attention features
 
 ## Notes
 
