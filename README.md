@@ -66,7 +66,6 @@ python distillation_data/download_mixkit.py  --local_dir XXX
 python distillation_data/process_mixkit.py --input_dir XXX  --output_dir XXX --width 832   --height 480  --fps 16 
 
 # precompute the vae latent 
-cd sample_dataset && wget XXX # download the json annotation file 
 torchrun --nproc_per_node 8 distillation_data/compute_vae_latent.py --input_video_folder XXX  --output_latent_folder XXX   --info_path sample_dataset/video_mixkit_6484_caption.json
 
 # combined everything into a lmdb dataset 
