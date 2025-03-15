@@ -35,7 +35,7 @@ def pos_interpolate(pos, seq_len):
                 mode='bicubic',
                 align_corners=False).flatten(2).transpose(1, 2)
         ],
-                         dim=1)
+            dim=1)
 
 
 class QuickGELU(nn.Module):

@@ -173,7 +173,7 @@ class Trainer:
 
             if not getattr(self, "unconditional_dict", None):
                 unconditional_dict = self.distillation_model.text_encoder(
-                    text_prompts=[self.config.negative_prompt]*batch_size)
+                    text_prompts=[self.config.negative_prompt] * batch_size)
                 unconditional_dict = {k: v.detach()
                                       for k, v in unconditional_dict.items()}
                 self.unconditional_dict = unconditional_dict  # cache the unconditional_dict

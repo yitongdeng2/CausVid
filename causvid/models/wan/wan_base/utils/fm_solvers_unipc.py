@@ -204,7 +204,7 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
 
         timesteps = sigmas * self.config.num_train_timesteps
         sigmas = np.concatenate([sigmas, [sigma_last]
-                                ]).astype(np.float32)  # pyright: ignore
+                                 ]).astype(np.float32)  # pyright: ignore
 
         self.sigmas = torch.from_numpy(sigmas)
         self.timesteps = torch.from_numpy(timesteps).to(

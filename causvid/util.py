@@ -147,9 +147,9 @@ def prepare_images_for_saving(images_tensor, height, width, grid_size=1, range_t
     if range_type != "uint8":
         images_tensor = (images_tensor * 0.5 + 0.5).clamp(0, 1) * 255
 
-    images = images_tensor[:grid_size*grid_size].permute(
+    images = images_tensor[:grid_size * grid_size].permute(
         0, 2, 3, 1).detach().cpu().numpy().astype("uint8")
     grid = images.reshape(grid_size, grid_size, height, width, 3)
     grid = np.swapaxes(grid, 1, 2).reshape(
-        grid_size*height, grid_size*width, 3)
+        grid_size * height, grid_size * width, 3)
     return grid

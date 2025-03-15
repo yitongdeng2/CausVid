@@ -130,7 +130,7 @@ def get_files_features(l_files, model=None, num_workers=12,
 
 
 """
-Compute the inception features for a numpy array 
+Compute the inception features for a numpy array
 """
 
 
@@ -353,7 +353,7 @@ def test_stats_exists(name, mode, model_name="inception_v3", metric="FID"):
     if model_name == "inception_v3":
         model_modifier = ""
     else:
-        model_modifier = "_"+model_name
+        model_modifier = "_" + model_name
     if metric == "FID":
         fname = f"{name}_{mode}{model_modifier}_{split}_{res}.npz"
     elif metric == "KID":
@@ -374,7 +374,7 @@ def remove_custom_stats(name, mode="clean", model_name="inception_v3"):
     if model_name == "inception_v3":
         model_modifier = ""
     else:
-        model_modifier = "_"+model_name
+        model_modifier = "_" + model_name
     outf = os.path.join(
         stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}.npz".lower())
     if not os.path.exists(outf):
@@ -403,7 +403,7 @@ def make_custom_stats(name, fdir, num=None, mode="clean", model_name="inception_
     if model_name == "inception_v3":
         model_modifier = ""
     else:
-        model_modifier = "_"+model_name
+        model_modifier = "_" + model_name
     outf = os.path.join(
         stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}.npz".lower())
     # if the custom stat file already exists
@@ -521,7 +521,7 @@ def compute_kid(fdir1=None, fdir2=None, gen=None,
 
 """
 custom_image_tranform:
-    function that takes an np_array image as input [0,255] and 
+    function that takes an np_array image as input [0,255] and
     applies a custom transform such as cropping
 """
 

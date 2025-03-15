@@ -15,6 +15,8 @@ from causvid.evaluation.coco_eval.cleanfid.inception_torchscript import Inceptio
 returns a functions that takes an image in range [0,255]
 and outputs a feature embedding vector
 """
+
+
 def feature_extractor(name="torchscript_inception", device=torch.device("cuda"), resize_inside=False, use_dataparallel=True):
     if name == "torchscript_inception":
         path = "./" if platform.system() == "Windows" else "/tmp"
@@ -22,13 +24,15 @@ def feature_extractor(name="torchscript_inception", device=torch.device("cuda"),
         model.eval()
         if use_dataparallel:
             model = torch.nn.DataParallel(model)
+
         def model_fn(x): return model(x)
     elif name == "pytorch_inception":
         model = InceptionV3(output_blocks=[3], resize_input=False).to(device)
         model.eval()
         if use_dataparallel:
             model = torch.nn.DataParallel(model)
-        def model_fn(x): return model(x/255)[0].squeeze(-1).squeeze(-1)
+
+        def model_fn(x): return model(x / 255)[0].squeeze(-1).squeeze(-1)
     else:
         raise ValueError(f"{name} feature extractor not implemented")
     return model_fn
@@ -37,6 +41,8 @@ def feature_extractor(name="torchscript_inception", device=torch.device("cuda"),
 """
 Build a feature extractor for each of the modes
 """
+
+
 def build_feature_extractor(mode, device=torch.device("cuda"), use_dataparallel=True):
     if mode == "legacy_pytorch":
         feat_model = feature_extractor(name="pytorch_inception", resize_inside=False, device=device, use_dataparallel=use_dataparallel)
@@ -50,14 +56,16 @@ def build_feature_extractor(mode, device=torch.device("cuda"), use_dataparallel=
 """
 Load precomputed reference statistics for commonly used datasets
 """
+
+
 def get_reference_statistics(name, res, mode="clean", model_name="inception_v3", seed=0, split="test", metric="FID"):
     base_url = "https://www.cs.cmu.edu/~clean-fid/stats/"
     if split == "custom":
         res = "na"
-    if model_name=="inception_v3":
+    if model_name == "inception_v3":
         model_modifier = ""
     else:
-        model_modifier = "_"+model_name
+        model_modifier = "_" + model_name
     if metric == "FID":
         rel_path = (f"{name}_{mode}{model_modifier}_{split}_{res}.npz").lower()
         url = f"{base_url}/{rel_path}"

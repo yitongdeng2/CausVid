@@ -20,7 +20,7 @@ def store_arrays_to_lmdb(env, arrays_dict, start_index=0):
                     row_bytes = row.encode()
                 else:
                     row_bytes = row.tobytes()
-                data_key = f'{array_name}_{start_index+i}_data'.encode()
+                data_key = f'{array_name}_{start_index + i}_data'.encode()
                 txn.put(data_key, row_bytes)
 
 
@@ -79,7 +79,7 @@ def main():
     """
     Aggregate all ode pairs inside a folder into a lmdb dataset.
     Each pt file should contain a (key, value) pair representing a
-    video's ODE trajectories. 
+    video's ODE trajectories.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str,

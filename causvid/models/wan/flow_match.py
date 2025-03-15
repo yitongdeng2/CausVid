@@ -6,7 +6,7 @@ import torch
 
 class FlowMatchScheduler():
 
-    def __init__(self, num_inference_steps=100, num_train_timesteps=1000, shift=3.0, sigma_max=1.0, sigma_min=0.003/1.002, inverse_timesteps=False, extra_one_step=False, reverse_sigmas=False):
+    def __init__(self, num_inference_steps=100, num_train_timesteps=1000, shift=3.0, sigma_max=1.0, sigma_min=0.003 / 1.002, inverse_timesteps=False, extra_one_step=False, reverse_sigmas=False):
         self.num_train_timesteps = num_train_timesteps
         self.shift = shift
         self.sigma_max = sigma_max
@@ -57,8 +57,8 @@ class FlowMatchScheduler():
 
     def add_noise(self, original_samples, noise, timestep):
         """
-        Diffusion forward corruption process. 
-        Input: 
+        Diffusion forward corruption process.
+        Input:
             - clean_latent: the clean latent with shape [B, C, H, W]
             - noise: the noise with shape [B, C, H, W]
             - timestep: the timestep with shape [B]

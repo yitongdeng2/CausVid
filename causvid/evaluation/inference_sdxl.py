@@ -41,7 +41,7 @@ def sample(pipeline, prompt_list, denoising_step_list, batch_size):
     images = []
     all_prompts = []
     for i in tqdm(range(0, num_prompts, batch_size)):
-        batch_prompt = prompt_list[i:i+batch_size]
+        batch_prompt = prompt_list[i:i + batch_size]
         timesteps = None if isinstance(
             pipeline.scheduler, DDIMScheduler) else denoising_step_list
         batch_images = pipeline(prompt=batch_prompt, num_inference_steps=num_steps, timesteps=timesteps,

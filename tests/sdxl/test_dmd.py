@@ -20,11 +20,11 @@ dmd_model.generator.model.load_state_dict(torch.load(
     hf_hub_download(repo_name, ckpt_name), map_location="cuda"))
 
 conditional_dict = dmd_model.text_encoder(
-    text_prompts=["a photo of a cat"]*4
+    text_prompts=["a photo of a cat"] * 4
 )
 
 unconditional_dict = dmd_model.text_encoder(
-    text_prompts=[""]*4
+    text_prompts=[""] * 4
 )
 
 print("Test 1: Backward Simulation")

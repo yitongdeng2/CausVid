@@ -20,7 +20,7 @@ model.set_module_grad(
 )
 
 conditional_dict = encoder(
-    text_prompts=["a photo of a cat"]*4
+    text_prompts=["a photo of a cat"] * 4
 )
 
 noise = torch.randn(

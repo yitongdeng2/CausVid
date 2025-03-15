@@ -107,7 +107,7 @@ def fetch_image(ele: dict[str, str | Image.Image],
             f"Unrecognized image input, support local path, http url, base64 and PIL.Image, got {image}"
         )
     image = image_obj.convert("RGB")
-    ## resize
+    # resize
     if "resized_height" in ele and "resized_width" in ele:
         resized_height, resized_width = smart_resize(
             ele["resized_height"],
@@ -316,7 +316,7 @@ def fetch_video(
                 "image": video_element,
                 **process_info
             },
-                        size_factor=image_factor)
+                size_factor=image_factor)
             for video_element in ele["video"]
         ]
         nframes = ceil_by_factor(len(images), FRAME_FACTOR)
@@ -346,7 +346,7 @@ def process_vision_info(
 ) -> tuple[list[Image.Image] | None, list[torch.Tensor | list[Image.Image]] |
            None]:
     vision_infos = extract_vision_info(conversations)
-    ## Read images or videos
+    # Read images or videos
     image_inputs = []
     video_inputs = []
     for vision_info in vision_infos:

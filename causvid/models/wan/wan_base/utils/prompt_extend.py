@@ -472,34 +472,34 @@ if __name__ == "__main__":
         model_name=ds_model_name)
     dashscope_result = dashscope_prompt_expander(prompt, tar_lang="ch")
     print("LM dashscope result -> ch",
-          dashscope_result.prompt)  #dashscope_result.system_prompt)
+          dashscope_result.prompt)  # dashscope_result.system_prompt)
     dashscope_result = dashscope_prompt_expander(prompt, tar_lang="en")
     print("LM dashscope result -> en",
-          dashscope_result.prompt)  #dashscope_result.system_prompt)
+          dashscope_result.prompt)  # dashscope_result.system_prompt)
     dashscope_result = dashscope_prompt_expander(en_prompt, tar_lang="ch")
     print("LM dashscope en result -> ch",
-          dashscope_result.prompt)  #dashscope_result.system_prompt)
+          dashscope_result.prompt)  # dashscope_result.system_prompt)
     dashscope_result = dashscope_prompt_expander(en_prompt, tar_lang="en")
     print("LM dashscope en result -> en",
-          dashscope_result.prompt)  #dashscope_result.system_prompt)
+          dashscope_result.prompt)  # dashscope_result.system_prompt)
     # # test qwen api
     qwen_prompt_expander = QwenPromptExpander(
         model_name=qwen_model_name, is_vl=False, device=0)
     qwen_result = qwen_prompt_expander(prompt, tar_lang="ch")
     print("LM qwen result -> ch",
-          qwen_result.prompt)  #qwen_result.system_prompt)
+          qwen_result.prompt)  # qwen_result.system_prompt)
     qwen_result = qwen_prompt_expander(prompt, tar_lang="en")
     print("LM qwen result -> en",
           qwen_result.prompt)  # qwen_result.system_prompt)
     qwen_result = qwen_prompt_expander(en_prompt, tar_lang="ch")
     print("LM qwen en result -> ch",
-          qwen_result.prompt)  #, qwen_result.system_prompt)
+          qwen_result.prompt)  # , qwen_result.system_prompt)
     qwen_result = qwen_prompt_expander(en_prompt, tar_lang="en")
     print("LM qwen en result -> en",
           qwen_result.prompt)  # , qwen_result.system_prompt)
     # test case for prompt-image extend
     ds_model_name = "qwen-vl-max"
-    #qwen_model_name = "./models/Qwen2.5-VL-3B-Instruct/" #VRAM: 9686MiB
+    # qwen_model_name = "./models/Qwen2.5-VL-3B-Instruct/" #VRAM: 9686MiB
     qwen_model_name = "./models/Qwen2.5-VL-7B-Instruct-AWQ/"  # VRAM: 8492
     image = "./examples/i2v_input.JPG"
 
@@ -509,7 +509,7 @@ if __name__ == "__main__":
     dashscope_result = dashscope_prompt_expander(
         prompt, tar_lang="ch", image=image, seed=seed)
     print("VL dashscope result -> ch",
-          dashscope_result.prompt)  #, dashscope_result.system_prompt)
+          dashscope_result.prompt)  # , dashscope_result.system_prompt)
     dashscope_result = dashscope_prompt_expander(
         prompt, tar_lang="en", image=image, seed=seed)
     print("VL dashscope result -> en",
@@ -517,7 +517,7 @@ if __name__ == "__main__":
     dashscope_result = dashscope_prompt_expander(
         en_prompt, tar_lang="ch", image=image, seed=seed)
     print("VL dashscope en result -> ch",
-          dashscope_result.prompt)  #, dashscope_result.system_prompt)
+          dashscope_result.prompt)  # , dashscope_result.system_prompt)
     dashscope_result = dashscope_prompt_expander(
         en_prompt, tar_lang="en", image=image, seed=seed)
     print("VL dashscope en result -> en",
@@ -528,7 +528,7 @@ if __name__ == "__main__":
     qwen_result = qwen_prompt_expander(
         prompt, tar_lang="ch", image=image, seed=seed)
     print("VL qwen result -> ch",
-          qwen_result.prompt)  #, qwen_result.system_prompt)
+          qwen_result.prompt)  # , qwen_result.system_prompt)
     qwen_result = qwen_prompt_expander(
         prompt, tar_lang="en", image=image, seed=seed)
     print("VL qwen result ->en",
@@ -536,7 +536,7 @@ if __name__ == "__main__":
     qwen_result = qwen_prompt_expander(
         en_prompt, tar_lang="ch", image=image, seed=seed)
     print("VL qwen vl en result -> ch",
-          qwen_result.prompt)  #, qwen_result.system_prompt)
+          qwen_result.prompt)  # , qwen_result.system_prompt)
     qwen_result = qwen_prompt_expander(
         en_prompt, tar_lang="en", image=image, seed=seed)
     print("VL qwen vl en result -> en",

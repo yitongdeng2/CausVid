@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 from tqdm import tqdm
 import argparse
 import torch
-import os 
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config_path", type=str)
@@ -15,7 +15,7 @@ args = parser.parse_args()
 
 torch.set_grad_enabled(False)
 
-config = OmegaConf.load(args.config_path) 
+config = OmegaConf.load(args.config_path)
 
 pipeline = InferencePipeline(config, device="cuda")
 pipeline.to(device="cuda", dtype=torch.bfloat16)

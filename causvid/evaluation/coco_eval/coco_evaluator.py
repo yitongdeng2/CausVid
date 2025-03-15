@@ -237,7 +237,7 @@ def compute_diversity_score(
     loss_list = []
 
     for i in range(num_images):
-        for j in range(i+1, num_images):
+        for j in range(i + 1, num_images):
             image1 = images[i].unsqueeze(0)
             image2 = images[j].unsqueeze(0)
             loss = lpips_loss_func(image1, image2)

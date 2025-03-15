@@ -12,7 +12,7 @@ class DenoisingLoss(ABC):
         **kwargs
     ) -> torch.Tensor:
         """
-        Base class for denoising loss. 
+        Base class for denoising loss.
         Input:
             - x: the clean data with shape [B, F, C, H, W]
             - x_pred: the predicted clean data with shape [B, F, C, H, W]
@@ -44,7 +44,7 @@ class VPredLoss(DenoisingLoss):
         **kwargs
     ) -> torch.Tensor:
         weights = 1 / \
-            (1-alphas_cumprod[timestep].reshape(*timestep.shape, 1, 1, 1))
+            (1 - alphas_cumprod[timestep].reshape(*timestep.shape, 1, 1, 1))
         return torch.mean(weights * (x - x_pred) ** 2)
 
 
@@ -58,6 +58,7 @@ class NoisePredLoss(DenoisingLoss):
     ) -> torch.Tensor:
         return torch.mean((noise - noise_pred) ** 2)
 
+
 class FlowPredLoss(DenoisingLoss):
     def __call__(
         self, x: torch.Tensor, x_pred: torch.Tensor,
@@ -66,7 +67,8 @@ class FlowPredLoss(DenoisingLoss):
         timestep: torch.Tensor,
         **kwargs
     ) -> torch.Tensor:
-        return torch.mean((kwargs["flow_pred"] - (noise-x)) ** 2)
+        return torch.mean((kwargs["flow_pred"] - (noise - x)) ** 2)
+
 
 NAME_TO_CLASS = {
     "x0": X0PredLoss,

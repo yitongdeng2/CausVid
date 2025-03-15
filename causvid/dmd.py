@@ -110,7 +110,7 @@ class DMD(nn.Module):
             - timestep: [batch_size, num_frame] tensor containing the randomly generated timestep.
             - type: a string indicating the type of the current model (image, bidirectional_video, or causal_video).
         Output Behavior:
-            - image: check that the second dimension (num_frame) is 1. 
+            - image: check that the second dimension (num_frame) is 1.
             - bidirectional_video: broadcast the timestep to be the same for all frames.
             - causal_video: broadcast the timestep to be the same for all frames **in a block**.
         """
@@ -208,9 +208,9 @@ class DMD(nn.Module):
             - conditional_dict: a dictionary containing the conditional information (e.g. text embeddings, image embeddings).
             - unconditional_dict: a dictionary containing the unconditional information (e.g. null/negative text embeddings, null/negative image embeddings).
             - gradient_mask: a boolean tensor with the same shape as image_or_video indicating which pixels to compute loss .
-        Output: 
+        Output:
             - dmd_loss: a scalar tensor representing the DMD loss.
-            - dmd_log_dict: a dictionary containing the intermediate tensors for logging. 
+            - dmd_log_dict: a dictionary containing the intermediate tensors for logging.
         """
         original_latent = image_or_video
 
@@ -232,8 +232,8 @@ class DMD(nn.Module):
             # TODO: Add timestep warping
             if self.timestep_shift > 1:
                 timestep = self.timestep_shift * \
-                    (timestep/1000) / \
-                    (1 + (self.timestep_shift - 1) * (timestep/1000)) * 1000
+                    (timestep / 1000) / \
+                    (1 + (self.timestep_shift - 1) * (timestep / 1000)) * 1000
             timestep = timestep.clamp(self.min_step, self.max_step)
 
             noise = torch.randn_like(image_or_video)
@@ -254,10 +254,10 @@ class DMD(nn.Module):
 
         if gradient_mask is not None:
             dmd_loss = 0.5 * F.mse_loss(original_latent.double(
-            )[gradient_mask], (original_latent.double()-grad.double()).detach()[gradient_mask], reduction="mean")
+            )[gradient_mask], (original_latent.double() - grad.double()).detach()[gradient_mask], reduction="mean")
         else:
             dmd_loss = 0.5 * F.mse_loss(original_latent.double(
-            ), (original_latent.double()-grad.double()).detach(), reduction="mean")
+            ), (original_latent.double() - grad.double()).detach(), reduction="mean")
         return dmd_loss, dmd_log_dict
 
     def _initialize_inference_pipeline(self):
@@ -277,16 +277,16 @@ class DMD(nn.Module):
     @torch.no_grad()
     def _consistency_backward_simulation(self, noise: torch.Tensor, conditional_dict: dict) -> torch.Tensor:
         """
-        Simulate the generator's input from noise to avoid training/inference mismatch. 
-        See Sec 4.5 of the DMD2 paper (https://arxiv.org/abs/2405.14867) for details. 
+        Simulate the generator's input from noise to avoid training/inference mismatch.
+        See Sec 4.5 of the DMD2 paper (https://arxiv.org/abs/2405.14867) for details.
         Here we use the consistency sampler (https://arxiv.org/abs/2303.01469)
         Input:
             - noise: a tensor sampled from N(0, 1) with shape [B, F, C, H, W] where the number of frame is 1 for images.
             - conditional_dict: a dictionary containing the conditional information (e.g. text embeddings, image embeddings).
         Output:
-            - output: a tensor with shape [B, T, F, C, H, W]. 
+            - output: a tensor with shape [B, T, F, C, H, W].
             T is the total number of timesteps. output[0] is a pure noise and output[i] and i>0
-            represents the x0 prediction at each timestep. 
+            represents the x0 prediction at each timestep.
         """
         if self.inference_pipeline is None:
             self._initialize_inference_pipeline()
@@ -303,7 +303,7 @@ class DMD(nn.Module):
             - unconditional_dict: a dictionary containing the unconditional information (e.g. null/negative text embeddings, null/negative image embeddings).
             - clean_latent: a tensor containing the clean latents [B, F, C, H, W]. Need to be passed when no backward simulation is used.
         Output:
-            - pred_image: a tensor with shape [B, F, C, H, W].         
+            - pred_image: a tensor with shape [B, F, C, H, W].
         """
         # Step 1: Sample noise and backward simulate the generator's input
         if getattr(self.args, "backward_simulation", True):
@@ -368,8 +368,8 @@ class DMD(nn.Module):
         """
         Generate image/videos from noise and compute the DMD loss.
         The noisy input to the generator is backward simulated.
-        This removes the need of any datasets during distillation.  
-        See Sec 4.5 of the DMD2 paper (https://arxiv.org/abs/2405.14867) for details. 
+        This removes the need of any datasets during distillation.
+        See Sec 4.5 of the DMD2 paper (https://arxiv.org/abs/2405.14867) for details.
         Input:
             - image_or_video_shape: a list containing the shape of the image or video [B, F, C, H, W].
             - conditional_dict: a dictionary containing the conditional information (e.g. text embeddings, image embeddings).
@@ -377,7 +377,7 @@ class DMD(nn.Module):
             - clean_latent: a tensor containing the clean latents [B, F, C, H, W]. Need to be passed when no backward simulation is used.
         Output:
             - loss: a scalar tensor representing the generator loss.
-            - generator_log_dict: a dictionary containing the intermediate tensors for logging. 
+            - generator_log_dict: a dictionary containing the intermediate tensors for logging.
         """
         # Step 1: Run generator on backward simulated noisy input
         pred_image, gradient_mask = self._run_generator(
@@ -403,8 +403,8 @@ class DMD(nn.Module):
         """
         Generate image/videos from noise and train the critic with generated samples.
         The noisy input to the generator is backward simulated.
-        This removes the need of any datasets during distillation.  
-        See Sec 4.5 of the DMD2 paper (https://arxiv.org/abs/2405.14867) for details. 
+        This removes the need of any datasets during distillation.
+        See Sec 4.5 of the DMD2 paper (https://arxiv.org/abs/2405.14867) for details.
         Input:
             - image_or_video_shape: a list containing the shape of the image or video [B, F, C, H, W].
             - conditional_dict: a dictionary containing the conditional information (e.g. text embeddings, image embeddings).
@@ -412,7 +412,7 @@ class DMD(nn.Module):
             - clean_latent: a tensor containing the clean latents [B, F, C, H, W]. Need to be passed when no backward simulation is used.
         Output:
             - loss: a scalar tensor representing the generator loss.
-            - critic_log_dict: a dictionary containing the intermediate tensors for logging. 
+            - critic_log_dict: a dictionary containing the intermediate tensors for logging.
         """
 
         # Step 1: Run generator on backward simulated noisy input
@@ -438,8 +438,7 @@ class DMD(nn.Module):
         # TODO: Add timestep warping
         if self.timestep_shift > 1:
             critic_timestep = self.timestep_shift * \
-                (critic_timestep/1000) / (1 + (self.timestep_shift - 1)
-                                          * (critic_timestep/1000)) * 1000
+                (critic_timestep / 1000) / (1 + (self.timestep_shift - 1) * (critic_timestep / 1000)) * 1000
 
         critic_timestep = critic_timestep.clamp(self.min_step, self.max_step)
 

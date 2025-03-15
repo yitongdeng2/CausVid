@@ -419,8 +419,8 @@ class CausalWanModel(ModelMixin, ConfigMixin):
         frame_seqlen: int = 1560, num_frame_per_block=1
     ) -> BlockMask:
         """
-        we will divide the token sequence into the following format 
-        [1 latent frame] [1 latent frame] ... [1 latent frame] 
+        we will divide the token sequence into the following format
+        [1 latent frame] [1 latent frame] ... [1 latent frame]
         We use flexattention to construct the attention mask
         """
         total_length = num_frames * frame_seqlen
@@ -435,20 +435,20 @@ class CausalWanModel(ModelMixin, ConfigMixin):
         frame_indices = torch.arange(
             start=0,
             end=total_length,
-            step=frame_seqlen*num_frame_per_block,
+            step=frame_seqlen * num_frame_per_block,
             device=device
         )
 
         for tmp in frame_indices:
-            ends[tmp:tmp+frame_seqlen*num_frame_per_block] = tmp + \
-                frame_seqlen*num_frame_per_block
+            ends[tmp:tmp + frame_seqlen * num_frame_per_block] = tmp + \
+                frame_seqlen * num_frame_per_block
 
         def attention_mask(b, h, q_idx, kv_idx):
             return (kv_idx < ends[q_idx]) | (q_idx == kv_idx)
             # return ((kv_idx < total_length) & (q_idx < total_length))  | (q_idx == kv_idx) # bidirectional mask
 
-        block_mask = create_block_mask(attention_mask, B=None, H=None, Q_LEN=total_length+padded_length,
-                                       KV_LEN=total_length+padded_length, _compile=False, device=device)
+        block_mask = create_block_mask(attention_mask, B=None, H=None, Q_LEN=total_length + padded_length,
+                                       KV_LEN=total_length + padded_length, _compile=False, device=device)
 
         import torch.distributed as dist
         if not dist.is_initialized() or dist.get_rank() == 0:
@@ -474,7 +474,7 @@ class CausalWanModel(ModelMixin, ConfigMixin):
         r"""
         Run the diffusion model with kv caching.
         See Algorithm 2 of CausVid paper https://arxiv.org/abs/2412.07772 for details.
-        This function will be run for num_frame times. 
+        This function will be run for num_frame times.
         Process the latent frames one by one (1560 tokens each)
 
         Args:

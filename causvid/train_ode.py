@@ -152,7 +152,7 @@ class Trainer:
                 unnormalized_loss[index].item())
 
         for key_t in loss_breakdown.keys():
-            stats["loss_at_time_"+key_t] = sum(loss_breakdown[key_t]) / \
+            stats["loss_at_time_" + key_t] = sum(loss_breakdown[key_t]) / \
                 len(loss_breakdown[key_t])
 
         self.generator_optimizer.zero_grad()

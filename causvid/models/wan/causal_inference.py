@@ -117,16 +117,16 @@ class InferencePipeline(torch.nn.Module):
         num_blocks = num_frames // self.num_frame_per_block
         for block_index in range(num_blocks):
             noisy_input = noise[:, block_index *
-                                self.num_frame_per_block:(block_index+1)*self.num_frame_per_block]
+                                self.num_frame_per_block:(block_index + 1) * self.num_frame_per_block]
 
             if start_latents is not None and block_index < num_input_blocks:
                 timestep = torch.ones(
                     [batch_size, self.num_frame_per_block], device=noise.device, dtype=torch.int64) * 0
 
-                current_ref_latents = start_latents[:, block_index*self.num_frame_per_block:(
-                    block_index+1)*self.num_frame_per_block]
-                output[:, block_index*self.num_frame_per_block:(
-                    block_index+1)*self.num_frame_per_block] = current_ref_latents
+                current_ref_latents = start_latents[:, block_index * self.num_frame_per_block:(
+                    block_index + 1) * self.num_frame_per_block]
+                output[:, block_index * self.num_frame_per_block:(
+                    block_index + 1) * self.num_frame_per_block] = current_ref_latents
 
                 self.generator(
                     noisy_image_or_video=current_ref_latents,
@@ -134,8 +134,8 @@ class InferencePipeline(torch.nn.Module):
                     timestep=timestep * 0,
                     kv_cache=self.kv_cache1,
                     crossattn_cache=self.crossattn_cache,
-                    current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
-                    current_end=(block_index+1) *
+                    current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
+                    current_end=(block_index + 1) *
                     self.num_frame_per_block * self.frame_seq_length
                 )
                 continue
@@ -153,9 +153,9 @@ class InferencePipeline(torch.nn.Module):
                         timestep=timestep,
                         kv_cache=self.kv_cache1,
                         crossattn_cache=self.crossattn_cache,
-                        current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
+                        current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
                         current_end=(
-                            block_index+1)*self.num_frame_per_block * self.frame_seq_length
+                            block_index + 1) * self.num_frame_per_block * self.frame_seq_length
                     )
                     next_timestep = self.denoising_step_list[index + 1]
                     noisy_input = self.scheduler.add_noise(
@@ -173,14 +173,14 @@ class InferencePipeline(torch.nn.Module):
                         timestep=timestep,
                         kv_cache=self.kv_cache1,
                         crossattn_cache=self.crossattn_cache,
-                        current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
+                        current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
                         current_end=(
-                            block_index+1)*self.num_frame_per_block * self.frame_seq_length
+                            block_index + 1) * self.num_frame_per_block * self.frame_seq_length
                     )
 
             # Step 2.2: rerun with timestep zero to update the cache
-            output[:, block_index*self.num_frame_per_block:(
-                block_index+1)*self.num_frame_per_block] = denoised_pred
+            output[:, block_index * self.num_frame_per_block:(
+                block_index + 1) * self.num_frame_per_block] = denoised_pred
 
             self.generator(
                 noisy_image_or_video=denoised_pred,
@@ -188,8 +188,8 @@ class InferencePipeline(torch.nn.Module):
                 timestep=timestep * 0,
                 kv_cache=self.kv_cache1,
                 crossattn_cache=self.crossattn_cache,
-                current_start=block_index*self.num_frame_per_block * self.frame_seq_length,
-                current_end=(block_index+1) *
+                current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
+                current_end=(block_index + 1) *
                 self.num_frame_per_block * self.frame_seq_length
             )
 

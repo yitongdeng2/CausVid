@@ -168,7 +168,7 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
                     f"{solver_type} is not implemented for {self.__class__}")
 
         if algorithm_type not in ["dpmsolver++", "sde-dpmsolver++"
-                                 ] and final_sigmas_type == "zero":
+                                  ] and final_sigmas_type == "zero":
             raise ValueError(
                 f"`final_sigmas_type` {final_sigmas_type} is not supported for `algorithm_type` {algorithm_type}. Please choose `sigma_min` instead."
             )
@@ -270,7 +270,7 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
 
         timesteps = sigmas * self.config.num_train_timesteps
         sigmas = np.concatenate([sigmas, [sigma_last]
-                                ]).astype(np.float32)  # pyright: ignore
+                                 ]).astype(np.float32)  # pyright: ignore
 
         self.sigmas = torch.from_numpy(sigmas)
         self.timesteps = torch.from_numpy(timesteps).to(
@@ -759,7 +759,7 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
         # Upcast to avoid precision issues when computing prev_sample
         sample = sample.to(torch.float32)
         if self.config.algorithm_type in ["sde-dpmsolver", "sde-dpmsolver++"
-                                         ] and variance_noise is None:
+                                          ] and variance_noise is None:
             noise = randn_tensor(
                 model_output.shape,
                 generator=generator,

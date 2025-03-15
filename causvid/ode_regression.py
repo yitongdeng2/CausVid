@@ -65,7 +65,7 @@ class ODERegression(nn.Module):
             - timestep: [batch_size, num_frame] tensor containing the randomly generated timestep.
 
         Output Behavior:
-            - image: check that the second dimension (num_frame) is 1. 
+            - image: check that the second dimension (num_frame) is 1.
             - bidirectional_video: broadcast the timestep to be the same for all frames.
             - causal_video: broadcast the timestep to be the same for all frames **in a block**.
         """
@@ -89,7 +89,7 @@ class ODERegression(nn.Module):
     @torch.no_grad()
     def _prepare_generator_input(self, ode_latent: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Given a tensor containing the whole ODE sampling trajectories, 
+        Given a tensor containing the whole ODE sampling trajectories,
         randomly choose an intermediate timestep and return the latent as well as the corresponding timestep.
         Input:
             - ode_latent: a tensor containing the whole ODE sampling trajectories [batch_size, num_denoising_steps, num_frames, num_channels, height, width].
@@ -131,7 +131,7 @@ class ODERegression(nn.Module):
         Generate image/videos from noisy latents and compute the ODE regression loss.
         Input:
             - ode_latent: a tensor containing the ODE latents [batch_size, num_denoising_steps, num_frames, num_channels, height, width].
-            They are ordered from most noisy to clean latents. 
+            They are ordered from most noisy to clean latents.
             - conditional_dict: a dictionary containing the conditional information (e.g. text embeddings, image embeddings).
         Output:
             - loss: a scalar tensor representing the generator loss.

@@ -42,16 +42,16 @@ class SDXLTextEncoder(TextEncoderInterface):
         Args:
             batch (dict):
                 A dictionary containing:
-                    - text_input_ids_one (torch.Tensor): The token IDs for the first tokenizer, 
+                    - text_input_ids_one (torch.Tensor): The token IDs for the first tokenizer,
                     of shape [batch_size, num_tokens].
                     - text_input_ids_two (torch.Tensor): The token IDs for the second tokenizer,
                     of shape [batch_size, num_tokens].
 
         Returns:
             dict: A dictionary with two keys:
-                - "prompt_embeds" (torch.Tensor): Concatenated embeddings from the second-to-last 
+                - "prompt_embeds" (torch.Tensor): Concatenated embeddings from the second-to-last
                 hidden states of both text encoders, of shape [batch_size, num_tokens, hidden_dim * 2].
-                - "pooled_prompt_embeds" (torch.Tensor): Pooled embeddings (final layer output) 
+                - "pooled_prompt_embeds" (torch.Tensor): Pooled embeddings (final layer output)
                 from the second text encoder, of shape [batch_size, hidden_dim].
         """
         text_input_ids_one = batch['text_input_ids_one']
@@ -85,8 +85,8 @@ class SDXLTextEncoder(TextEncoderInterface):
 
     def _encode_prompt(self, prompt_list):
         """
-        Encodes a list of prompts with two tokenizers and returns a dictionary 
-        of the resulting tensors. 
+        Encodes a list of prompts with two tokenizers and returns a dictionary
+        of the resulting tensors.
         """
         text_input_ids_one = self.tokenizer_one(
             prompt_list,
@@ -155,9 +155,9 @@ class SDXLWrapper(DiffusionModelInterface):
         self.model.enable_gradient_checkpointing()
 
     def forward(
-        self, noisy_image_or_video: torch.Tensor, conditional_dict: dict, 
-        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None, 
-        current_end: int = None            
+        self, noisy_image_or_video: torch.Tensor, conditional_dict: dict,
+        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None,
+        current_end: int = None
     ) -> torch.Tensor:
         # TODO: Check how to apply gradient checkpointing
         # [B, 1, C, H, W] -> [B, C, H, W]

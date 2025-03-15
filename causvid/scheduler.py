@@ -14,8 +14,8 @@ class SchedulerInterface(ABC):
         noise: torch.Tensor, timestep: torch.Tensor
     ):
         """
-        Diffusion forward corruption process. 
-        Input: 
+        Diffusion forward corruption process.
+        Input:
             - clean_latent: the clean latent with shape [B, C, H, W]
             - noise: the noise with shape [B, C, H, W]
             - timestep: the timestep with shape [B]
@@ -84,9 +84,9 @@ class SchedulerInterface(ABC):
         xt: the input noisy data with shape [B, C, H, W]
         timestep: the timestep with shape [B]
 
-        v = sqrt(alpha_t) * noise - sqrt(beta_t) x0 
+        v = sqrt(alpha_t) * noise - sqrt(beta_t) x0
         noise = (xt-sqrt(alpha_t)*x0) / sqrt(beta_t)
-        given v, x_t, we have 
+        given v, x_t, we have
         x0 = sqrt(alpha_t) * x_t - sqrt(beta_t) * v
         see derivations https://chatgpt.com/share/679fb6c8-3a30-8008-9b0e-d1ae892dac56
         """
