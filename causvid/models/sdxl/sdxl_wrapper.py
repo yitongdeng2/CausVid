@@ -155,9 +155,9 @@ class SDXLWrapper(DiffusionModelInterface):
         self.model.enable_gradient_checkpointing()
 
     def forward(
-        self, noisy_image_or_video: torch.Tensor, conditional_dict: dict, 
-        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None, 
-        current_end: int = None            
+        self, noisy_image_or_video: torch.Tensor, conditional_dict: dict,
+        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None,
+        current_end: int = None
     ) -> torch.Tensor:
         # TODO: Check how to apply gradient checkpointing
         # [B, 1, C, H, W] -> [B, C, H, W]

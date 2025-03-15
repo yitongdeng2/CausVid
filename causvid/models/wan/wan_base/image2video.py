@@ -209,7 +209,7 @@ class WanI2V:
         msk = torch.concat([
             torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]
         ],
-                           dim=1)
+            dim=1)
         msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
         msk = msk.transpose(1, 2)[0]
 
@@ -241,7 +241,7 @@ class WanI2V:
                         0, 1),
                 torch.zeros(3, 80, h, w)
             ],
-                         dim=1).to(self.device)
+                dim=1).to(self.device)
         ])[0]
         y = torch.concat([msk, y])
 

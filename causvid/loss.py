@@ -58,6 +58,7 @@ class NoisePredLoss(DenoisingLoss):
     ) -> torch.Tensor:
         return torch.mean((noise - noise_pred) ** 2)
 
+
 class FlowPredLoss(DenoisingLoss):
     def __call__(
         self, x: torch.Tensor, x_pred: torch.Tensor,
@@ -67,6 +68,7 @@ class FlowPredLoss(DenoisingLoss):
         **kwargs
     ) -> torch.Tensor:
         return torch.mean((kwargs["flow_pred"] - (noise-x)) ** 2)
+
 
 NAME_TO_CLASS = {
     "x0": X0PredLoss,

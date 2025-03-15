@@ -428,7 +428,8 @@ def make_custom_stats(name, fdir, num=None, mode="clean", model_name="inception_
     # get all inception features for folder images
     np_feats = get_folder_features(fdir, feat_model, num_workers=num_workers, num=num,
                                    batch_size=batch_size, device=device, verbose=verbose,
-                                   mode=mode, description=f"custom stats: {os.path.basename(fdir)} : ",
+                                   mode=mode, description=f"custom stats: {
+                                       os.path.basename(fdir)} : ",
                                    custom_image_tranform=custom_image_tranform,
                                    custom_fn_resize=custom_fn_resize)
 

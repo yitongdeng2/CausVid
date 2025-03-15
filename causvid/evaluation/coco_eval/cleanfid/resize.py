@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 def build_resizer(mode):
     if mode == "clean":
-        return make_resizer("PIL", False, "bicubic", (299,299))
+        return make_resizer("PIL", False, "bicubic", (299, 299))
     # if using legacy tensorflow, do not manually resize outside the network
     elif mode == "legacy_tensorflow":
         return lambda x: x
@@ -24,6 +24,8 @@ def build_resizer(mode):
 Construct a function that resizes a numpy image based on the
 flags passed in.
 """
+
+
 def make_resizer(library, quantize_after, filter, output_size):
     if library == "PIL" and quantize_after:
         name_to_filter = {
@@ -33,6 +35,7 @@ def make_resizer(library, quantize_after, filter, output_size):
             "lanczos": Image.LANCZOS,
             "box": Image.BOX
         }
+
         def func(x):
             x = Image.fromarray(x)
             x = x.resize(output_size, resample=name_to_filter[filter])
@@ -47,10 +50,12 @@ def make_resizer(library, quantize_after, filter, output_size):
             "box": Image.BOX
         }
         s1, s2 = output_size
+
         def resize_single_channel(x_np):
             img = Image.fromarray(x_np.astype(np.float32), mode='F')
             img = img.resize(output_size, resample=name_to_filter[filter])
             return np.asarray(img).clip(0, 255).reshape(s2, s1, 1)
+
         def func(x):
             x = [resize_single_channel(x[:, :, idx]) for idx in range(3)]
             x = np.concatenate(x, axis=2).astype(np.float32)
@@ -59,9 +64,11 @@ def make_resizer(library, quantize_after, filter, output_size):
         import warnings
         # ignore the numpy warnings
         warnings.filterwarnings("ignore")
+
         def func(x):
             x = torch.Tensor(x.transpose((2, 0, 1)))[None, ...]
-            x = F.interpolate(x, size=output_size, mode=filter, align_corners=False)
+            x = F.interpolate(x, size=output_size,
+                              mode=filter, align_corners=False)
             x = x[0, ...].cpu().data.numpy().transpose((1, 2, 0)).clip(0, 255)
             if quantize_after:
                 x = x.astype(np.uint8)
@@ -71,6 +78,7 @@ def make_resizer(library, quantize_after, filter, output_size):
         # ignore the numpy warnings
         warnings.filterwarnings("ignore")
         import tensorflow as tf
+
         def func(x):
             x = tf.constant(x)[tf.newaxis, ...]
             x = tf.image.resize(x, output_size, method=filter)
@@ -87,8 +95,10 @@ def make_resizer(library, quantize_after, filter, output_size):
             "nearest": cv2.INTER_NEAREST,
             "area": cv2.INTER_AREA
         }
+
         def func(x):
-            x = cv2.resize(x, output_size, interpolation=name_to_filter[filter])
+            x = cv2.resize(
+                x, output_size, interpolation=name_to_filter[filter])
             x = x.clip(0, 255)
             if quantize_after:
                 x = x.astype(np.uint8)

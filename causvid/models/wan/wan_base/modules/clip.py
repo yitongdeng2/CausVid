@@ -35,7 +35,7 @@ def pos_interpolate(pos, seq_len):
                 mode='bicubic',
                 align_corners=False).flatten(2).transpose(1, 2)
         ],
-                         dim=1)
+            dim=1)
 
 
 class QuickGELU(nn.Module):
@@ -82,7 +82,8 @@ class SelfAttention(nn.Module):
 
         # compute attention
         p = self.attn_dropout if self.training else 0.0
-        x = flash_attention(q, k, v, dropout_p=p, causal=self.causal, version=2)
+        x = flash_attention(q, k, v, dropout_p=p,
+                            causal=self.causal, version=2)
         x = x.reshape(b, s, c)
 
         # output
@@ -190,7 +191,8 @@ class AttentionPool(nn.Module):
         b, s, c, n, d = *x.size(), self.num_heads, self.head_dim
 
         # compute query, key, value
-        q = self.to_q(self.cls_embedding).view(1, 1, n, d).expand(b, -1, -1, -1)
+        q = self.to_q(self.cls_embedding).view(
+            1, 1, n, d).expand(b, -1, -1, -1)
         k, v = self.to_kv(x).view(b, s, 2, n, d).unbind(2)
 
         # compute attention

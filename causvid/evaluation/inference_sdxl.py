@@ -69,7 +69,8 @@ def main():
     parser.add_argument("--checkpoint_path", type=str, required=True)
     parser.add_argument("--output_dir", type=str, default="./output")
     parser.add_argument("--local_rank", type=int, default=-1)
-    parser.add_argument("--scheduler", type=str, choices=['ddim', 'lcm'], default='lcm')
+    parser.add_argument("--scheduler", type=str,
+                        choices=['ddim', 'lcm'], default='lcm')
 
     args = parser.parse_args()
 
@@ -88,7 +89,8 @@ def main():
         pipeline.scheduler = DDIMScheduler.from_config(
             pipeline.scheduler.config, timestep_spacing="trailing")
     elif args.scheduler == "lcm":
-        pipeline.scheduler = LCMScheduler.from_config(pipeline.scheduler.config)
+        pipeline.scheduler = LCMScheduler.from_config(
+            pipeline.scheduler.config)
 
     pipeline.set_progress_bar_config(disable=True)
     pipeline.safety_checker = None

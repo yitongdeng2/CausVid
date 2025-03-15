@@ -43,7 +43,8 @@ def retrieve_timesteps(
             inspect.signature(scheduler.set_timesteps).parameters.keys())
         if not accepts_timesteps:
             raise ValueError(
-                f"The current scheduler class {scheduler.__class__}'s `set_timesteps` does not support custom"
+                f"The current scheduler class {
+                    scheduler.__class__}'s `set_timesteps` does not support custom"
                 f" timestep schedules. Please check whether you are using the correct scheduler."
             )
         scheduler.set_timesteps(timesteps=timesteps, device=device, **kwargs)
@@ -54,7 +55,8 @@ def retrieve_timesteps(
             inspect.signature(scheduler.set_timesteps).parameters.keys())
         if not accept_sigmas:
             raise ValueError(
-                f"The current scheduler class {scheduler.__class__}'s `set_timesteps` does not support custom"
+                f"The current scheduler class {
+                    scheduler.__class__}'s `set_timesteps` does not support custom"
                 f" sigmas schedules. Please check whether you are using the correct scheduler."
             )
         scheduler.set_timesteps(sigmas=sigmas, device=device, **kwargs)
@@ -146,7 +148,8 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
         invert_sigmas: bool = False,
     ):
         if algorithm_type in ["dpmsolver", "sde-dpmsolver"]:
-            deprecation_message = f"algorithm_type {algorithm_type} is deprecated and will be removed in a future version. Choose from `dpmsolver++` or `sde-dpmsolver++` instead"
+            deprecation_message = f"algorithm_type {
+                algorithm_type} is deprecated and will be removed in a future version. Choose from `dpmsolver++` or `sde-dpmsolver++` instead"
             deprecate("algorithm_types dpmsolver and sde-dpmsolver", "1.0.0",
                       deprecation_message)
 
@@ -168,9 +171,10 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
                     f"{solver_type} is not implemented for {self.__class__}")
 
         if algorithm_type not in ["dpmsolver++", "sde-dpmsolver++"
-                                 ] and final_sigmas_type == "zero":
+                                  ] and final_sigmas_type == "zero":
             raise ValueError(
-                f"`final_sigmas_type` {final_sigmas_type} is not supported for `algorithm_type` {algorithm_type}. Please choose `sigma_min` instead."
+                f"`final_sigmas_type` {final_sigmas_type} is not supported for `algorithm_type` {
+                    algorithm_type}. Please choose `sigma_min` instead."
             )
 
         # setable values
@@ -265,12 +269,13 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
             sigma_last = 0
         else:
             raise ValueError(
-                f"`final_sigmas_type` must be one of 'zero', or 'sigma_min', but got {self.config.final_sigmas_type}"
+                f"`final_sigmas_type` must be one of 'zero', or 'sigma_min', but got {
+                    self.config.final_sigmas_type}"
             )
 
         timesteps = sigmas * self.config.num_train_timesteps
         sigmas = np.concatenate([sigmas, [sigma_last]
-                                ]).astype(np.float32)  # pyright: ignore
+                                 ]).astype(np.float32)  # pyright: ignore
 
         self.sigmas = torch.from_numpy(sigmas)
         self.timesteps = torch.from_numpy(timesteps).to(
@@ -383,7 +388,8 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
                 x0_pred = sample - sigma_t * model_output
             else:
                 raise ValueError(
-                    f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample`,"
+                    f"prediction_type given as {
+                        self.config.prediction_type} must be one of `epsilon`, `sample`,"
                     " `v_prediction`, or `flow_prediction` for the FlowDPMSolverMultistepScheduler."
                 )
 
@@ -399,7 +405,8 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
                 epsilon = sample - (1 - sigma_t) * model_output
             else:
                 raise ValueError(
-                    f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample`,"
+                    f"prediction_type given as {
+                        self.config.prediction_type} must be one of `epsilon`, `sample`,"
                     " `v_prediction` or `flow_prediction` for the FlowDPMSolverMultistepScheduler."
                 )
 
@@ -759,7 +766,7 @@ class FlowDPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
         # Upcast to avoid precision issues when computing prev_sample
         sample = sample.to(torch.float32)
         if self.config.algorithm_type in ["sde-dpmsolver", "sde-dpmsolver++"
-                                         ] and variance_noise is None:
+                                          ] and variance_noise is None:
             noise = randn_tensor(
                 model_output.shape,
                 generator=generator,

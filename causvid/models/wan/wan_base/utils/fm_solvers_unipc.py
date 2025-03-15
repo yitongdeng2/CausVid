@@ -199,12 +199,13 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
             sigma_last = 0
         else:
             raise ValueError(
-                f"`final_sigmas_type` must be one of 'zero', or 'sigma_min', but got {self.config.final_sigmas_type}"
+                f"`final_sigmas_type` must be one of 'zero', or 'sigma_min', but got {
+                    self.config.final_sigmas_type}"
             )
 
         timesteps = sigmas * self.config.num_train_timesteps
         sigmas = np.concatenate([sigmas, [sigma_last]
-                                ]).astype(np.float32)  # pyright: ignore
+                                 ]).astype(np.float32)  # pyright: ignore
 
         self.sigmas = torch.from_numpy(sigmas)
         self.timesteps = torch.from_numpy(timesteps).to(
@@ -218,7 +219,8 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
         self.lower_order_nums = 0
         self.last_sample = None
         if self.solver_p:
-            self.solver_p.set_timesteps(self.num_inference_steps, device=device)
+            self.solver_p.set_timesteps(
+                self.num_inference_steps, device=device)
 
         # add an index counter for schedulers that allow duplicated timesteps
         self._step_index = None
@@ -321,7 +323,8 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
                 x0_pred = sample - sigma_t * model_output
             else:
                 raise ValueError(
-                    f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample`,"
+                    f"prediction_type given as {
+                        self.config.prediction_type} must be one of `epsilon`, `sample`,"
                     " `v_prediction` or `flow_prediction` for the UniPCMultistepScheduler."
                 )
 
@@ -335,7 +338,8 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
                 epsilon = sample - (1 - sigma_t) * model_output
             else:
                 raise ValueError(
-                    f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample`,"
+                    f"prediction_type given as {
+                        self.config.prediction_type} must be one of `epsilon`, `sample`,"
                     " `v_prediction` or `flow_prediction` for the UniPCMultistepScheduler."
                 )
 
@@ -722,7 +726,8 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
 
         self.last_sample = sample
         prev_sample = self.multistep_uni_p_bh_update(
-            model_output=model_output,  # pass the original non-converted model output, in case solver-p is used
+            # pass the original non-converted model output, in case solver-p is used
+            model_output=model_output,
             sample=sample,
             order=self.this_order,
         )

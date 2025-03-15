@@ -211,7 +211,8 @@ class T5CrossAttention(nn.Module):
                 pos_bias=None):
         e = pos_bias if self.shared_pos else self.pos_embedding(
             x.size(1), x.size(1))
-        x = fp16_clamp(x + self.self_attn(self.norm1(x), mask=mask, pos_bias=e))
+        x = fp16_clamp(
+            x + self.self_attn(self.norm1(x), mask=mask, pos_bias=e))
         x = fp16_clamp(x + self.cross_attn(
             self.norm2(x), context=encoder_states, mask=encoder_mask))
         x = fp16_clamp(x + self.ffn(self.norm3(x)))

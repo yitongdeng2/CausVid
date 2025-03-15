@@ -101,7 +101,8 @@ class XLMRoberta(nn.Module):
         self.eps = eps
 
         # embeddings
-        self.token_embedding = nn.Embedding(vocab_size, dim, padding_idx=pad_id)
+        self.token_embedding = nn.Embedding(
+            vocab_size, dim, padding_idx=pad_id)
         self.type_embedding = nn.Embedding(type_size, dim)
         self.pos_embedding = nn.Embedding(max_seq_len, dim, padding_idx=pad_id)
         self.dropout = nn.Dropout(dropout)

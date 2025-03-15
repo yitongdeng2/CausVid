@@ -5,7 +5,7 @@ import urllib.request
 
 
 def get_score(model_name=None, dataset_name=None,
-        dataset_res=None, dataset_split=None, task_name=None):
+              dataset_res=None, dataset_split=None, task_name=None):
     # download the csv file from server
     url = "https://www.cs.cmu.edu/~clean-fid/files/leaderboard.csv"
     local_path = "/tmp/leaderboard.csv"

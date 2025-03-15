@@ -12,6 +12,8 @@ Download the pretrined inception weights if it does not exists
 ARGS:
     fpath - output folder path
 """
+
+
 def check_download_inception(fpath="./"):
     inception_path = os.path.join(fpath, "inception-2015-12-05.pt")
     if not os.path.exists(inception_path):
@@ -27,6 +29,8 @@ ARGS:
     local_folder - output folder path
     url - the weburl to download
 """
+
+
 def check_download_url(local_folder, url):
     name = os.path.basename(url)
     local_path = os.path.join(local_folder, name)
@@ -44,6 +48,8 @@ ARGS:
     file_id - id of the google drive file
     out_path - output folder path
 """
+
+
 def download_google_drive(file_id, out_path):
     def get_confirm_token(response):
         for key, value in response.cookies.items():

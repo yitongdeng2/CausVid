@@ -46,7 +46,7 @@ def rope_apply(x, grid_sizes, freqs):
             freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
             freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
         ],
-                            dim=-1).reshape(seq_len, 1, -1)
+            dim=-1).reshape(seq_len, 1, -1)
 
         # apply rotary embedding
         sp_size = get_sequence_parallel_world_size()
