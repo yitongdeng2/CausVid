@@ -1,27 +1,39 @@
 import argparse
 import os
 import tarfile
-from huggingface_hub import snapshot_download
 from concurrent.futures import ThreadPoolExecutor
+
+from huggingface_hub import snapshot_download
 
 
 def extract_tar(tar_path, dest_dir):
     """
     Extracts a .tar file to the specified destination directory.
     """
-    with tarfile.open(tar_path, 'r') as tar:
+    with tarfile.open(tar_path, "r") as tar:
         tar.extractall(path=dest_dir)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Download and extract dataset.")
-    parser.add_argument("--local_dir", type=str, default="/mnt/localssd/",
-                        help="Local directory to save the dataset.")
-    parser.add_argument("--repo_id", type=str,
-                        default="Languagebind/Open-Sora-Plan-v1.1.0", help="Hugging Face repository ID.")
-    parser.add_argument("--folder_name", type=str, default="all_mixkit",
-                        help="Folder name of the huggingface repo.")
+    parser = argparse.ArgumentParser(description="Download and extract dataset.")
+    parser.add_argument(
+        "--local_dir",
+        type=str,
+        default="/mnt/localssd/",
+        help="Local directory to save the dataset.",
+    )
+    parser.add_argument(
+        "--repo_id",
+        type=str,
+        default="Languagebind/Open-Sora-Plan-v1.1.0",
+        help="Hugging Face repository ID.",
+    )
+    parser.add_argument(
+        "--folder_name",
+        type=str,
+        default="all_mixkit",
+        help="Folder name of the huggingface repo.",
+    )
 
     args = parser.parse_args()
 
@@ -30,9 +42,9 @@ def main():
     snapshot_download(
         repo_id=args.repo_id,
         local_dir=args.local_dir,
-        revision="main",          # or the branch/tag/commit you want
+        revision="main",  # or the branch/tag/commit you want
         allow_patterns=allow_patterns,
-        repo_type="dataset"
+        repo_type="dataset",
     )
 
     # 4. Collect all .tar files recursively from the downloaded folder

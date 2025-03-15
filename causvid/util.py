@@ -1,22 +1,20 @@
-from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
-from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy
-from torch.distributed.fsdp.wrap import ModuleWrapPolicy
-from torch.distributed.fsdp import (
-    FullStateDictConfig,
-    StateDictType,
-    MixedPrecision,
-    ShardingStrategy,
-    FullyShardedDataParallel as FSDP
-)
-from datetime import timedelta, datetime
-import torch.distributed as dist
-from omegaconf import OmegaConf
-from functools import partial
-import numpy as np
-import random
-import torch
-import wandb
 import os
+import random
+from datetime import datetime, timedelta
+from functools import partial
+
+import numpy as np
+import torch
+import torch.distributed as dist
+import wandb
+from omegaconf import OmegaConf
+from torch.distributed.fsdp import FullStateDictConfig
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import (MixedPrecision, ShardingStrategy,
+                                    StateDictType)
+from torch.distributed.fsdp.wrap import (ModuleWrapPolicy,
+                                         size_based_auto_wrap_policy,
+                                         transformer_auto_wrap_policy)
 
 
 def launch_distributed_job(backend: str = "nccl"):
@@ -30,8 +28,13 @@ def launch_distributed_job(backend: str = "nccl"):
         init_method = f"tcp://[{host}]:{port}"
     else:  # IPv4
         init_method = f"tcp://{host}:{port}"
-    dist.init_process_group(rank=rank, world_size=world_size, backend=backend,
-                            init_method=init_method, timeout=timedelta(minutes=30))
+    dist.init_process_group(
+        rank=rank,
+        world_size=world_size,
+        backend=backend,
+        init_method=init_method,
+        timeout=timedelta(minutes=30),
+    )
     torch.cuda.set_device(local_rank)
 
 
@@ -56,16 +59,20 @@ def set_seed(seed: int, deterministic: bool = False):
 
 def init_logging_folder(args):
     date = str(datetime.now()).replace(" ", "-").replace(":", "-")
-    output_path = os.path.join(
-        args.output_path,
-        f"{date}_seed{args.seed}"
-    )
+    output_path = os.path.join(args.output_path, f"{date}_seed{args.seed}")
     os.makedirs(output_path, exist_ok=False)
 
     os.makedirs(args.output_path, exist_ok=True)
     wandb.login(host=args.wandb_host, key=args.wandb_key)
-    run = wandb.init(config=OmegaConf.to_container(args, resolve=True), dir=args.output_path, **
-                     {"mode": "online", "entity": args.wandb_entity, "project": args.wandb_project})
+    run = wandb.init(
+        config=OmegaConf.to_container(args, resolve=True),
+        dir=args.output_path,
+        **{
+            "mode": "online",
+            "entity": args.wandb_entity,
+            "project": args.wandb_project,
+        },
+    )
     wandb.run.log_code(".")
     wandb.run.name = args.wandb_name
     print(f"run dir: {run.dir}")
@@ -75,26 +82,31 @@ def init_logging_folder(args):
     return output_path, wandb_folder
 
 
-def fsdp_wrap(module, sharding_strategy="full", mixed_precision=False, wrap_strategy="size", min_num_params=int(5e7), transformer_module=None):
+def fsdp_wrap(
+    module,
+    sharding_strategy="full",
+    mixed_precision=False,
+    wrap_strategy="size",
+    min_num_params=int(5e7),
+    transformer_module=None,
+):
     if mixed_precision:
         mixed_precision_policy = MixedPrecision(
             param_dtype=torch.bfloat16,
             reduce_dtype=torch.float32,
             buffer_dtype=torch.float32,
-            cast_forward_inputs=False
+            cast_forward_inputs=False,
         )
     else:
         mixed_precision_policy = None
 
     if wrap_strategy == "transformer":
         auto_wrap_policy = partial(
-            transformer_auto_wrap_policy,
-            transformer_layer_cls=transformer_module
+            transformer_auto_wrap_policy, transformer_layer_cls=transformer_module
         )
     elif wrap_strategy == "size":
         auto_wrap_policy = partial(
-            size_based_auto_wrap_policy,
-            min_num_params=min_num_params
+            size_based_auto_wrap_policy, min_num_params=min_num_params
         )
     else:
         raise ValueError(f"Invalid wrap strategy: {wrap_strategy}")
@@ -115,7 +127,7 @@ def fsdp_wrap(module, sharding_strategy="full", mixed_precision=False, wrap_stra
         mixed_precision=mixed_precision_policy,
         device_id=torch.cuda.current_device(),
         limit_all_gathers=True,
-        sync_module_states=False  # Load ckpt on rank 0 and sync to other ranks
+        sync_module_states=False,  # Load ckpt on rank 0 and sync to other ranks
     )
     return module
 
@@ -143,13 +155,20 @@ def barrier():
         dist.barrier()
 
 
-def prepare_images_for_saving(images_tensor, height, width, grid_size=1, range_type="neg1pos1"):
+def prepare_images_for_saving(
+    images_tensor, height, width, grid_size=1, range_type="neg1pos1"
+):
     if range_type != "uint8":
         images_tensor = (images_tensor * 0.5 + 0.5).clamp(0, 1) * 255
 
-    images = images_tensor[:grid_size*grid_size].permute(
-        0, 2, 3, 1).detach().cpu().numpy().astype("uint8")
+    images = (
+        images_tensor[: grid_size * grid_size]
+        .permute(0, 2, 3, 1)
+        .detach()
+        .cpu()
+        .numpy()
+        .astype("uint8")
+    )
     grid = images.reshape(grid_size, grid_size, height, width, 3)
-    grid = np.swapaxes(grid, 1, 2).reshape(
-        grid_size*height, grid_size*width, 3)
+    grid = np.swapaxes(grid, 1, 2).reshape(grid_size * height, grid_size * width, 3)
     return grid

@@ -1,22 +1,18 @@
-from causvid.data import ODERegressionLMDBDataset
-from causvid.models import get_block_class
-from causvid.data import TextDataset
-from causvid.util import (
-    launch_distributed_job,
-    prepare_images_for_saving,
-    set_seed, init_logging_folder,
-    fsdp_wrap, cycle,
-    fsdp_state_dict,
-    barrier
-)
-import torch.distributed as dist
-from omegaconf import OmegaConf
-from causvid.dmd import DMD
 import argparse
-import torch
-import wandb
-import time
 import os
+import time
+
+import torch
+import torch.distributed as dist
+import wandb
+from omegaconf import OmegaConf
+
+from causvid.data import ODERegressionLMDBDataset, TextDataset
+from causvid.dmd import DMD
+from causvid.models import get_block_class
+from causvid.util import (barrier, cycle, fsdp_state_dict, fsdp_wrap,
+                          init_logging_folder, launch_distributed_job,
+                          prepare_images_for_saving, set_seed)
 
 
 class Trainer:
@@ -56,8 +52,11 @@ class Trainer:
             sharding_strategy=config.sharding_strategy,
             mixed_precision=config.mixed_precision,
             wrap_strategy=config.generator_fsdp_wrap_strategy,
-            transformer_module=(get_block_class(config.generator_fsdp_transformer_module),
-                                ) if config.generator_fsdp_wrap_strategy == "transformer" else None
+            transformer_module=(
+                (get_block_class(config.generator_fsdp_transformer_module),)
+                if config.generator_fsdp_wrap_strategy == "transformer"
+                else None
+            ),
         )
 
         self.distillation_model.real_score = fsdp_wrap(
@@ -65,8 +64,11 @@ class Trainer:
             sharding_strategy=config.sharding_strategy,
             mixed_precision=config.mixed_precision,
             wrap_strategy=config.real_score_fsdp_wrap_strategy,
-            transformer_module=(get_block_class(config.real_score_fsdp_transformer_module),
-                                ) if config.real_score_fsdp_wrap_strategy == "transformer" else None
+            transformer_module=(
+                (get_block_class(config.real_score_fsdp_transformer_module),)
+                if config.real_score_fsdp_wrap_strategy == "transformer"
+                else None
+            ),
         )
 
         self.distillation_model.fake_score = fsdp_wrap(
@@ -74,8 +76,11 @@ class Trainer:
             sharding_strategy=config.sharding_strategy,
             mixed_precision=config.mixed_precision,
             wrap_strategy=config.fake_score_fsdp_wrap_strategy,
-            transformer_module=(get_block_class(config.fake_score_fsdp_transformer_module),
-                                ) if config.fake_score_fsdp_wrap_strategy == "transformer" else None
+            transformer_module=(
+                (get_block_class(config.fake_score_fsdp_transformer_module),)
+                if config.fake_score_fsdp_wrap_strategy == "transformer"
+                else None
+            ),
         )
 
         self.distillation_model.text_encoder = fsdp_wrap(
@@ -83,26 +88,37 @@ class Trainer:
             sharding_strategy=config.sharding_strategy,
             mixed_precision=config.mixed_precision,
             wrap_strategy=config.text_encoder_fsdp_wrap_strategy,
-            transformer_module=(get_block_class(config.text_encoder_fsdp_transformer_module),
-                                ) if config.text_encoder_fsdp_wrap_strategy == "transformer" else None
+            transformer_module=(
+                (get_block_class(config.text_encoder_fsdp_transformer_module),)
+                if config.text_encoder_fsdp_wrap_strategy == "transformer"
+                else None
+            ),
         )
 
         if not config.no_visualize:
             self.distillation_model.vae = self.distillation_model.vae.to(
-                device=self.device, dtype=torch.bfloat16 if config.mixed_precision else torch.float32)
+                device=self.device,
+                dtype=torch.bfloat16 if config.mixed_precision else torch.float32,
+            )
 
         self.generator_optimizer = torch.optim.AdamW(
-            [param for param in self.distillation_model.generator.parameters()
-             if param.requires_grad],
+            [
+                param
+                for param in self.distillation_model.generator.parameters()
+                if param.requires_grad
+            ],
             lr=config.lr,
-            betas=(config.beta1, config.beta2)
+            betas=(config.beta1, config.beta2),
         )
 
         self.critic_optimizer = torch.optim.AdamW(
-            [param for param in self.distillation_model.fake_score.parameters()
-             if param.requires_grad],
+            [
+                param
+                for param in self.distillation_model.fake_score.parameters()
+                if param.requires_grad
+            ],
             lr=config.lr,
-            betas=(config.beta1, config.beta2)
+            betas=(config.beta1, config.beta2),
         )
 
         # Step 3: Initialize the dataloader
@@ -112,12 +128,13 @@ class Trainer:
         if self.backward_simulation:
             dataset = TextDataset(config.data_path)
         else:
-            dataset = ODERegressionLMDBDataset(
-                config.data_path, max_pair=int(1e8))
+            dataset = ODERegressionLMDBDataset(config.data_path, max_pair=int(1e8))
         sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, shuffle=True, drop_last=True)
+            dataset, shuffle=True, drop_last=True
+        )
         dataloader = torch.utils.data.DataLoader(
-            dataset, batch_size=config.batch_size, sampler=sampler)
+            dataset, batch_size=config.batch_size, sampler=sampler
+        )
         self.dataloader = cycle(dataloader)
 
         self.step = 0
@@ -126,28 +143,35 @@ class Trainer:
 
     def save(self):
         print("Start gathering distributed model states...")
-        generator_state_dict = fsdp_state_dict(
-            self.distillation_model.generator)
-        critic_state_dict = fsdp_state_dict(
-            self.distillation_model.fake_score)
-        state_dict = {
-            "generator": generator_state_dict,
-            "critic": critic_state_dict
-        }
+        generator_state_dict = fsdp_state_dict(self.distillation_model.generator)
+        critic_state_dict = fsdp_state_dict(self.distillation_model.fake_score)
+        state_dict = {"generator": generator_state_dict, "critic": critic_state_dict}
 
         if self.is_main_process:
-            os.makedirs(os.path.join(self.output_path,
-                        f"checkpoint_model_{self.step:06d}"), exist_ok=True)
-            torch.save(state_dict, os.path.join(self.output_path,
-                       f"checkpoint_model_{self.step:06d}", "model.pt"))
-            print("Model saved to", os.path.join(self.output_path,
-                  f"checkpoint_model_{self.step:06d}", "model.pt"))
+            os.makedirs(
+                os.path.join(self.output_path, f"checkpoint_model_{self.step:06d}"),
+                exist_ok=True,
+            )
+            torch.save(
+                state_dict,
+                os.path.join(
+                    self.output_path, f"checkpoint_model_{self.step:06d}", "model.pt"
+                ),
+            )
+            print(
+                "Model saved to",
+                os.path.join(
+                    self.output_path, f"checkpoint_model_{self.step:06d}", "model.pt"
+                ),
+            )
 
     def train_one_step(self):
         self.distillation_model.eval()  # prevent any randomness (e.g. dropout)
 
         TRAIN_GENERATOR = self.step % self.config.dfake_gen_update_ratio == 0
-        VISUALIZE = self.step % self.config.log_iters == 0 and not self.config.no_visualize
+        VISUALIZE = (
+            self.step % self.config.log_iters == 0 and not self.config.no_visualize
+        )
 
         if self.step % 20 == 0:
             torch.cuda.empty_cache()
@@ -157,7 +181,8 @@ class Trainer:
             batch = next(self.dataloader)
             text_prompts = batch["prompts"]
             clean_latent = batch["ode_latent"][:, -1].to(
-                device=self.device, dtype=self.dtype)
+                device=self.device, dtype=self.dtype
+            )
         else:
             text_prompts = next(self.dataloader)
             clean_latent = None
@@ -169,14 +194,19 @@ class Trainer:
         # Step 2: Extract the conditional infos
         with torch.no_grad():
             conditional_dict = self.distillation_model.text_encoder(
-                text_prompts=text_prompts)
+                text_prompts=text_prompts
+            )
 
             if not getattr(self, "unconditional_dict", None):
                 unconditional_dict = self.distillation_model.text_encoder(
-                    text_prompts=[self.config.negative_prompt]*batch_size)
-                unconditional_dict = {k: v.detach()
-                                      for k, v in unconditional_dict.items()}
-                self.unconditional_dict = unconditional_dict  # cache the unconditional_dict
+                    text_prompts=[self.config.negative_prompt] * batch_size
+                )
+                unconditional_dict = {
+                    k: v.detach() for k, v in unconditional_dict.items()
+                }
+                self.unconditional_dict = (
+                    unconditional_dict  # cache the unconditional_dict
+                )
             else:
                 unconditional_dict = self.unconditional_dict
 
@@ -186,13 +216,14 @@ class Trainer:
                 image_or_video_shape=image_or_video_shape,
                 conditional_dict=conditional_dict,
                 unconditional_dict=unconditional_dict,
-                clean_latent=clean_latent
+                clean_latent=clean_latent,
             )
 
             self.generator_optimizer.zero_grad()
             generator_loss.backward()
             generator_grad_norm = self.distillation_model.generator.clip_grad_norm_(
-                self.max_grad_norm)
+                self.max_grad_norm
+            )
             self.generator_optimizer.step()
 
         # Step 4: Train the critic
@@ -200,20 +231,21 @@ class Trainer:
             image_or_video_shape=image_or_video_shape,
             conditional_dict=conditional_dict,
             unconditional_dict=unconditional_dict,
-            clean_latent=clean_latent
+            clean_latent=clean_latent,
         )
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         critic_grad_norm = self.distillation_model.fake_score.clip_grad_norm_(
-            self.max_grad_norm)
+            self.max_grad_norm
+        )
         self.critic_optimizer.step()
 
         # Step 5: Logging
         if self.is_main_process:
             wandb_loss_dict = {
                 "critic_loss": critic_loss.item(),
-                "critic_grad_norm": critic_grad_norm.item()
+                "critic_grad_norm": critic_grad_norm.item(),
             }
 
             if TRAIN_GENERATOR:
@@ -221,38 +253,84 @@ class Trainer:
                     {
                         "generator_loss": generator_loss.item(),
                         "generator_grad_norm": generator_grad_norm.item(),
-                        "dmdtrain_gradient_norm": generator_log_dict["dmdtrain_gradient_norm"].item()
+                        "dmdtrain_gradient_norm": generator_log_dict[
+                            "dmdtrain_gradient_norm"
+                        ].item(),
                     }
                 )
 
             if VISUALIZE:
-                critictrain_latent, critictrain_noisy_latent, critictrain_pred_image = map(
-                    lambda x: self.distillation_model.vae.decode_to_pixel(
-                        x).squeeze(1),
-                    [critic_log_dict['critictrain_latent'], critic_log_dict['critictrain_noisy_latent'],
-                     critic_log_dict['critictrain_pred_image']]
+                critictrain_latent, critictrain_noisy_latent, critictrain_pred_image = (
+                    map(
+                        lambda x: self.distillation_model.vae.decode_to_pixel(
+                            x
+                        ).squeeze(1),
+                        [
+                            critic_log_dict["critictrain_latent"],
+                            critic_log_dict["critictrain_noisy_latent"],
+                            critic_log_dict["critictrain_pred_image"],
+                        ],
+                    )
                 )
 
                 visual_dict = {
-                    "critictrain_latent": prepare_images_for_saving(critictrain_latent, critictrain_latent.shape[-2], critictrain_latent.shape[-1]),
-                    "critictrain_noisy_latent": prepare_images_for_saving(critictrain_noisy_latent, critictrain_noisy_latent.shape[-2], critictrain_noisy_latent.shape[-1]),
-                    "critictrain_pred_image": prepare_images_for_saving(critictrain_pred_image, critictrain_pred_image.shape[-2], critictrain_pred_image.shape[-1])
+                    "critictrain_latent": prepare_images_for_saving(
+                        critictrain_latent,
+                        critictrain_latent.shape[-2],
+                        critictrain_latent.shape[-1],
+                    ),
+                    "critictrain_noisy_latent": prepare_images_for_saving(
+                        critictrain_noisy_latent,
+                        critictrain_noisy_latent.shape[-2],
+                        critictrain_noisy_latent.shape[-1],
+                    ),
+                    "critictrain_pred_image": prepare_images_for_saving(
+                        critictrain_pred_image,
+                        critictrain_pred_image.shape[-2],
+                        critictrain_pred_image.shape[-1],
+                    ),
                 }
 
                 if TRAIN_GENERATOR:
-                    (dmdtrain_clean_latent, dmdtrain_noisy_latent, dmdtrain_pred_real_image, dmdtrain_pred_fake_image) = map(
+                    (
+                        dmdtrain_clean_latent,
+                        dmdtrain_noisy_latent,
+                        dmdtrain_pred_real_image,
+                        dmdtrain_pred_fake_image,
+                    ) = map(
                         lambda x: self.distillation_model.vae.decode_to_pixel(
-                            x).squeeze(1),
-                        [generator_log_dict['dmdtrain_clean_latent'], generator_log_dict['dmdtrain_noisy_latent'],
-                         generator_log_dict['dmdtrain_pred_real_image'], generator_log_dict['dmdtrain_pred_fake_image']]
+                            x
+                        ).squeeze(1),
+                        [
+                            generator_log_dict["dmdtrain_clean_latent"],
+                            generator_log_dict["dmdtrain_noisy_latent"],
+                            generator_log_dict["dmdtrain_pred_real_image"],
+                            generator_log_dict["dmdtrain_pred_fake_image"],
+                        ],
                     )
 
                     visual_dict.update(
                         {
-                            "dmdtrain_clean_latent": prepare_images_for_saving(dmdtrain_clean_latent, dmdtrain_clean_latent.shape[-2], dmdtrain_clean_latent.shape[-1]),
-                            "dmdtrain_noisy_latent": prepare_images_for_saving(dmdtrain_noisy_latent, dmdtrain_noisy_latent.shape[-2], dmdtrain_noisy_latent.shape[-1]),
-                            "dmdtrain_pred_real_image": prepare_images_for_saving(dmdtrain_pred_real_image, dmdtrain_pred_real_image.shape[-2], dmdtrain_pred_real_image.shape[-1]),
-                            "dmdtrain_pred_fake_image": prepare_images_for_saving(dmdtrain_pred_fake_image, dmdtrain_pred_fake_image.shape[-2], dmdtrain_pred_fake_image.shape[-1])
+                            "dmdtrain_clean_latent": prepare_images_for_saving(
+                                dmdtrain_clean_latent,
+                                dmdtrain_clean_latent.shape[-2],
+                                dmdtrain_clean_latent.shape[-1],
+                            ),
+                            "dmdtrain_noisy_latent": prepare_images_for_saving(
+                                dmdtrain_noisy_latent,
+                                dmdtrain_noisy_latent.shape[-2],
+                                dmdtrain_noisy_latent.shape[-1],
+                            ),
+                            "dmdtrain_pred_real_image": prepare_images_for_saving(
+                                dmdtrain_pred_real_image,
+                                dmdtrain_pred_real_image.shape[-2],
+                                dmdtrain_pred_real_image.shape[-1],
+                            ),
+                            "dmdtrain_pred_fake_image": prepare_images_for_saving(
+                                dmdtrain_pred_fake_image,
+                                dmdtrain_pred_fake_image.shape[-2],
+                                dmdtrain_pred_fake_image.shape[-1],
+                            ),
                         }
                     )
 
@@ -274,8 +352,10 @@ class Trainer:
                 if self.previous_time is None:
                     self.previous_time = current_time
                 else:
-                    wandb.log({"per iteration time": current_time -
-                              self.previous_time}, step=self.step)
+                    wandb.log(
+                        {"per iteration time": current_time - self.previous_time},
+                        step=self.step,
+                    )
                     self.previous_time = current_time
 
             self.step += 1

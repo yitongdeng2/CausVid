@@ -1,10 +1,11 @@
-from tqdm import tqdm
-import numpy as np
 import argparse
-import torch
-import lmdb
 import glob
 import os
+
+import lmdb
+import numpy as np
+import torch
+from tqdm import tqdm
 
 
 def store_arrays_to_lmdb(env, arrays_dict, start_index=0):
@@ -20,7 +21,7 @@ def store_arrays_to_lmdb(env, arrays_dict, start_index=0):
                     row_bytes = row.encode()
                 else:
                     row_bytes = row.tobytes()
-                data_key = f'{array_name}_{start_index+i}_data'.encode()
+                data_key = f"{array_name}_{start_index+i}_data".encode()
                 txn.put(data_key, row_bytes)
 
 
@@ -50,8 +51,8 @@ def process_data_dict(data_dict, seen_prompts):
         return {"latents": np.array([]), "prompts": np.array([])}
 
     all_videos = np.concatenate(all_videos, axis=0)
-    output_dict['latents'] = all_videos
-    output_dict['prompts'] = np.array(all_prompts)
+    output_dict["latents"] = all_videos
+    output_dict["prompts"] = np.array(all_prompts)
 
     return output_dict
 
@@ -60,7 +61,7 @@ def retrieve_row_from_lmdb(lmdb_env, array_name, dtype, row_index, shape=None):
     """
     Retrieve a specific row from a specific array in the LMDB.
     """
-    data_key = f'{array_name}_{row_index}_data'.encode()
+    data_key = f"{array_name}_{row_index}_data".encode()
 
     with lmdb_env.begin() as txn:
         row_bytes = txn.get(data_key)
@@ -79,13 +80,13 @@ def main():
     """
     Aggregate all ode pairs inside a folder into a lmdb dataset.
     Each pt file should contain a (key, value) pair representing a
-    video's ODE trajectories. 
+    video's ODE trajectories.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str,
-                        required=True, help="path to ode pairs")
-    parser.add_argument("--lmdb_path", type=str,
-                        required=True, help="path to lmdb")
+    parser.add_argument(
+        "--data_path", type=str, required=True, help="path to ode pairs"
+    )
+    parser.add_argument("--lmdb_path", type=str, required=True, help="path to lmdb")
 
     args = parser.parse_args()
 
@@ -108,7 +109,7 @@ def main():
 
         # write to lmdb file
         store_arrays_to_lmdb(env, data_dict, start_index=counter)
-        counter += len(data_dict['prompts'])
+        counter += len(data_dict["prompts"])
 
     # save each entry's shape to lmdb
     with env.begin(write=True) as txn:

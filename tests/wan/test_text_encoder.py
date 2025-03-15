@@ -1,5 +1,6 @@
-from causvid.models.wan.wan_wrapper import WanTextEncoder
 import torch
+
+from causvid.models.wan.wan_wrapper import WanTextEncoder
 
 torch.set_grad_enabled(False)
 
@@ -12,5 +13,8 @@ print("Test Text Encoder")
 
 encoded_dict = model(prompt_list)
 
-assert encoded_dict['prompt_embeds'].shape[0] == 20 and encoded_dict[
-    'prompt_embeds'].shape[1] == 512 and encoded_dict['prompt_embeds'].shape[2] == 4096
+assert (
+    encoded_dict["prompt_embeds"].shape[0] == 20
+    and encoded_dict["prompt_embeds"].shape[1] == 512
+    and encoded_dict["prompt_embeds"].shape[2] == 4096
+)
