@@ -16,8 +16,8 @@ generator_task: image
 denoising_loss_type: noise
 mixed_precision: true
 seed: 0
-wandb_host: WANDB_HOST
-wandb_key: WANDB_KEY
+wandb_host: https://adobesensei.wandb.io/
+wandb_key: local-4c966cd9adf1ca53819ec33419988cfe04b0bb07
 wandb_entity: tyin
 wandb_project: causvid
 wandb_name: causvid_sdxl_test_run_1node
