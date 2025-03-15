@@ -1,19 +1,17 @@
 import os
 import random
-import zipfile
+from tqdm import tqdm
 from glob import glob
-
-import numpy as np
 import torch
+import numpy as np
 from PIL import Image
 from scipy import linalg
-from tqdm import tqdm
-
+import zipfile
 from causvid.evaluation.coco_eval import cleanfid
-from causvid.evaluation.coco_eval.cleanfid.features import (
-    build_feature_extractor, get_reference_statistics)
-from causvid.evaluation.coco_eval.cleanfid.resize import *
 from causvid.evaluation.coco_eval.cleanfid.utils import *
+from causvid.evaluation.coco_eval.cleanfid.features import build_feature_extractor, get_reference_statistics
+from causvid.evaluation.coco_eval.cleanfid.resize import *
+
 
 """
 Numpy implementation of the Frechet Distance.
@@ -39,22 +37,18 @@ def frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     sigma1 = np.atleast_2d(sigma1)
     sigma2 = np.atleast_2d(sigma2)
 
-    assert (
-        mu1.shape == mu2.shape
-    ), "Training and test mean vectors have different lengths"
-    assert (
-        sigma1.shape == sigma2.shape
-    ), "Training and test covariances have different dimensions"
+    assert mu1.shape == mu2.shape, \
+        'Training and test mean vectors have different lengths'
+    assert sigma1.shape == sigma2.shape, \
+        'Training and test covariances have different dimensions'
 
     diff = mu1 - mu2
 
     # Product might be almost singular
     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
     if not np.isfinite(covmean).all():
-        msg = (
-            "fid calculation produces singular product; "
-            "adding %s to diagonal of cov estimates"
-        ) % eps
+        msg = ('fid calculation produces singular product; '
+               'adding %s to diagonal of cov estimates') % eps
         print(msg)
         offset = np.eye(sigma1.shape[0]) * eps
         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
@@ -63,12 +57,12 @@ def frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     if np.iscomplexobj(covmean):
         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
             m = np.max(np.abs(covmean.imag))
-            raise ValueError("Imaginary component {}".format(m))
+            raise ValueError('Imaginary component {}'.format(m))
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)
 
-    return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
+    return (diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean)
 
 
 """
@@ -106,19 +100,11 @@ Compute the inception features for a list of files
 """
 
 
-def get_files_features(
-    l_files,
-    model=None,
-    num_workers=12,
-    batch_size=128,
-    device=torch.device("cuda"),
-    mode="clean",
-    custom_fn_resize=None,
-    description="",
-    fdir=None,
-    verbose=True,
-    custom_image_tranform=None,
-):
+def get_files_features(l_files, model=None, num_workers=12,
+                       batch_size=128, device=torch.device("cuda"),
+                       mode="clean", custom_fn_resize=None,
+                       description="", fdir=None, verbose=True,
+                       custom_image_tranform=None):
     # wrap the images in a dataloader for parallelizing the resize operation
     dataset = ResizeDataset(l_files, fdir=fdir, mode=mode)
     if custom_image_tranform is not None:
@@ -126,13 +112,9 @@ def get_files_features(
     if custom_fn_resize is not None:
         dataset.fn_resize = custom_fn_resize
 
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=False,
-        num_workers=num_workers,
-    )
+    dataloader = torch.utils.data.DataLoader(dataset,
+                                             batch_size=batch_size, shuffle=False,
+                                             drop_last=False, num_workers=num_workers)
 
     # collect all inception features
     l_feats = []
@@ -148,22 +130,15 @@ def get_files_features(
 
 
 """
-Compute the inception features for a numpy array 
+Compute the inception features for a numpy array
 """
 
 
-def get_array_features(
-    l_array,
-    model=None,
-    num_workers=12,
-    batch_size=128,
-    device=torch.device("cuda"),
-    mode="clean",
-    custom_fn_resize=None,
-    description="",
-    verbose=True,
-    custom_image_tranform=None,
-):
+def get_array_features(l_array, model=None, num_workers=12,
+                       batch_size=128, device=torch.device("cuda"),
+                       mode="clean", custom_fn_resize=None,
+                       description="", verbose=True,
+                       custom_image_tranform=None):
     # wrap the images in a dataloader for parallelizing the resize operation
     dataset = ResizeArrayDataset(l_array, mode=mode)
     if custom_image_tranform is not None:
@@ -171,13 +146,9 @@ def get_array_features(
     if custom_fn_resize is not None:
         dataset.fn_resize = custom_fn_resize
 
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=False,
-        num_workers=num_workers,
-    )
+    dataloader = torch.utils.data.DataLoader(dataset,
+                                             batch_size=batch_size, shuffle=False,
+                                             drop_last=False, num_workers=num_workers)
 
     # collect all inception features
     l_feats = []
@@ -197,34 +168,19 @@ Compute the inception features for a folder of image files
 """
 
 
-def get_folder_features(
-    fdir,
-    model=None,
-    num_workers=12,
-    num=None,
-    shuffle=False,
-    seed=0,
-    batch_size=128,
-    device=torch.device("cuda"),
-    mode="clean",
-    custom_fn_resize=None,
-    description="",
-    verbose=True,
-    custom_image_tranform=None,
-):
+def get_folder_features(fdir, model=None, num_workers=12, num=None,
+                        shuffle=False, seed=0, batch_size=128, device=torch.device("cuda"),
+                        mode="clean", custom_fn_resize=None, description="", verbose=True,
+                        custom_image_tranform=None):
     # get all relevant files in the dataset
     if ".zip" in fdir:
         files = list(set(zipfile.ZipFile(fdir).namelist()))
         # remove the non-image files inside the zip
-        files = [x for x in files if os.path.splitext(x)[1].lower()[1:] in EXTENSIONS]
+        files = [x for x in files if os.path.splitext(x)[1].lower()[
+            1:] in EXTENSIONS]
     else:
-        files = sorted(
-            [
-                file
-                for ext in EXTENSIONS
-                for file in glob(os.path.join(fdir, f"**/*.{ext}"), recursive=True)
-            ]
-        )
+        files = sorted([file for ext in EXTENSIONS
+                        for file in glob(os.path.join(fdir, f"**/*.{ext}"), recursive=True)])
     if verbose:
         print(f"Found {len(files)} images in the folder {fdir}")
     # use a subset number of files if needed
@@ -233,19 +189,11 @@ def get_folder_features(
             random.seed(seed)
             random.shuffle(files)
         files = files[:num]
-    np_feats = get_files_features(
-        files,
-        model,
-        num_workers=num_workers,
-        batch_size=batch_size,
-        device=device,
-        mode=mode,
-        custom_fn_resize=custom_fn_resize,
-        custom_image_tranform=custom_image_tranform,
-        description=description,
-        fdir=fdir,
-        verbose=verbose,
-    )
+    np_feats = get_files_features(files, model, num_workers=num_workers,
+                                  batch_size=batch_size, device=device, mode=mode,
+                                  custom_fn_resize=custom_fn_resize,
+                                  custom_image_tranform=custom_image_tranform,
+                                  description=description, fdir=fdir, verbose=verbose)
     return np_feats
 
 
@@ -266,44 +214,20 @@ and a specific resolution
 """
 
 
-def fid_folder(
-    fdir,
-    dataset_name,
-    dataset_res,
-    dataset_split,
-    model=None,
-    mode="clean",
-    model_name="inception_v3",
-    num_workers=12,
-    batch_size=128,
-    device=torch.device("cuda"),
-    verbose=True,
-    custom_image_tranform=None,
-    custom_fn_resize=None,
-):
+def fid_folder(fdir, dataset_name, dataset_res, dataset_split,
+               model=None, mode="clean", model_name="inception_v3", num_workers=12,
+               batch_size=128, device=torch.device("cuda"), verbose=True,
+               custom_image_tranform=None, custom_fn_resize=None):
     # Load reference FID statistics (download if needed)
-    ref_mu, ref_sigma = get_reference_statistics(
-        dataset_name,
-        dataset_res,
-        mode=mode,
-        model_name=model_name,
-        seed=0,
-        split=dataset_split,
-    )
+    ref_mu, ref_sigma = get_reference_statistics(dataset_name, dataset_res,
+                                                 mode=mode, model_name=model_name, seed=0, split=dataset_split)
     fbname = os.path.basename(fdir)
     # get all inception features for folder images
-    np_feats = get_folder_features(
-        fdir,
-        model,
-        num_workers=num_workers,
-        batch_size=batch_size,
-        device=device,
-        mode=mode,
-        description=f"FID {fbname} : ",
-        verbose=verbose,
-        custom_image_tranform=custom_image_tranform,
-        custom_fn_resize=custom_fn_resize,
-    )
+    np_feats = get_folder_features(fdir, model, num_workers=num_workers,
+                                   batch_size=batch_size, device=device,
+                                   mode=mode, description=f"FID {fbname} : ", verbose=verbose,
+                                   custom_image_tranform=custom_image_tranform,
+                                   custom_fn_resize=custom_fn_resize)
     mu = np.mean(np_feats, axis=0)
     sigma = np.cov(np_feats, rowvar=False)
     fid = frechet_distance(mu, sigma, ref_mu, ref_sigma)
@@ -315,20 +239,10 @@ Compute the FID stats from a generator model
 """
 
 
-def get_model_features(
-    G,
-    model,
-    mode="clean",
-    z_dim=512,
-    num_gen=50_000,
-    batch_size=128,
-    device=torch.device("cuda"),
-    desc="FID model: ",
-    verbose=True,
-    return_z=False,
-    custom_image_tranform=None,
-    custom_fn_resize=None,
-):
+def get_model_features(G, model, mode="clean", z_dim=512,
+                       num_gen=50_000, batch_size=128, device=torch.device("cuda"),
+                       desc="FID model: ", verbose=True, return_z=False,
+                       custom_image_tranform=None, custom_fn_resize=None):
     if custom_fn_resize is None:
         fn_resize = build_resizer(mode)
     else:
@@ -358,9 +272,8 @@ def get_model_features(
                     if custom_image_tranform is not None:
                         img_np = custom_image_tranform(img_np)
                     img_resize = fn_resize(img_np)
-                    l_resized_batch.append(
-                        torch.tensor(img_resize.transpose((2, 0, 1))).unsqueeze(0)
-                    )
+                    l_resized_batch.append(torch.tensor(
+                        img_resize.transpose((2, 0, 1))).unsqueeze(0))
                 resized_batch = torch.cat(l_resized_batch, dim=0)
             else:
                 resized_batch = img_batch
@@ -379,45 +292,20 @@ and a specific resolution
 """
 
 
-def fid_model(
-    G,
-    dataset_name,
-    dataset_res,
-    dataset_split,
-    model=None,
-    model_name="inception_v3",
-    z_dim=512,
-    num_gen=50_000,
-    mode="clean",
-    num_workers=0,
-    batch_size=128,
-    device=torch.device("cuda"),
-    verbose=True,
-    custom_image_tranform=None,
-    custom_fn_resize=None,
-):
+def fid_model(G, dataset_name, dataset_res, dataset_split,
+              model=None, model_name="inception_v3", z_dim=512, num_gen=50_000,
+              mode="clean", num_workers=0, batch_size=128,
+              device=torch.device("cuda"), verbose=True,
+              custom_image_tranform=None, custom_fn_resize=None):
     # Load reference FID statistics (download if needed)
-    ref_mu, ref_sigma = get_reference_statistics(
-        dataset_name,
-        dataset_res,
-        mode=mode,
-        model_name=model_name,
-        seed=0,
-        split=dataset_split,
-    )
+    ref_mu, ref_sigma = get_reference_statistics(dataset_name, dataset_res,
+                                                 mode=mode, model_name=model_name,
+                                                 seed=0, split=dataset_split)
     # Generate features of images generated by the model
-    np_feats = get_model_features(
-        G,
-        model,
-        mode=mode,
-        z_dim=z_dim,
-        num_gen=num_gen,
-        batch_size=batch_size,
-        device=device,
-        verbose=verbose,
-        custom_image_tranform=custom_image_tranform,
-        custom_fn_resize=custom_fn_resize,
-    )
+    np_feats = get_model_features(G, model, mode=mode,
+                                  z_dim=z_dim, num_gen=num_gen,
+                                  batch_size=batch_size, device=device, verbose=verbose,
+                                  custom_image_tranform=custom_image_tranform, custom_fn_resize=custom_fn_resize)
     mu = np.mean(np_feats, axis=0)
     sigma = np.cov(np_feats, rowvar=False)
     fid = frechet_distance(mu, sigma, ref_mu, ref_sigma)
@@ -429,48 +317,25 @@ Computes the FID score between the two given folders
 """
 
 
-def compare_folders(
-    fdir1,
-    fdir2,
-    feat_model,
-    mode,
-    num_workers=0,
-    batch_size=8,
-    device=torch.device("cuda"),
-    verbose=True,
-    custom_image_tranform=None,
-    custom_fn_resize=None,
-):
+def compare_folders(fdir1, fdir2, feat_model, mode, num_workers=0,
+                    batch_size=8, device=torch.device("cuda"), verbose=True,
+                    custom_image_tranform=None, custom_fn_resize=None):
     # get all inception features for the first folder
     fbname1 = os.path.basename(fdir1)
-    np_feats1 = get_folder_features(
-        fdir1,
-        feat_model,
-        num_workers=num_workers,
-        batch_size=batch_size,
-        device=device,
-        mode=mode,
-        description=f"FID {fbname1} : ",
-        verbose=verbose,
-        custom_image_tranform=custom_image_tranform,
-        custom_fn_resize=custom_fn_resize,
-    )
+    np_feats1 = get_folder_features(fdir1, feat_model, num_workers=num_workers,
+                                    batch_size=batch_size, device=device, mode=mode,
+                                    description=f"FID {fbname1} : ", verbose=verbose,
+                                    custom_image_tranform=custom_image_tranform,
+                                    custom_fn_resize=custom_fn_resize)
     mu1 = np.mean(np_feats1, axis=0)
     sigma1 = np.cov(np_feats1, rowvar=False)
     # get all inception features for the second folder
     fbname2 = os.path.basename(fdir2)
-    np_feats2 = get_folder_features(
-        fdir2,
-        feat_model,
-        num_workers=num_workers,
-        batch_size=batch_size,
-        device=device,
-        mode=mode,
-        description=f"FID {fbname2} : ",
-        verbose=verbose,
-        custom_image_tranform=custom_image_tranform,
-        custom_fn_resize=custom_fn_resize,
-    )
+    np_feats2 = get_folder_features(fdir2, feat_model, num_workers=num_workers,
+                                    batch_size=batch_size, device=device, mode=mode,
+                                    description=f"FID {fbname2} : ", verbose=verbose,
+                                    custom_image_tranform=custom_image_tranform,
+                                    custom_fn_resize=custom_fn_resize)
     mu2 = np.mean(np_feats2, axis=0)
     sigma2 = np.cov(np_feats2, rowvar=False)
     fid = frechet_distance(mu1, sigma1, mu2, sigma2)
@@ -511,16 +376,14 @@ def remove_custom_stats(name, mode="clean", model_name="inception_v3"):
     else:
         model_modifier = "_" + model_name
     outf = os.path.join(
-        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}.npz".lower()
-    )
+        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}.npz".lower())
     if not os.path.exists(outf):
         msg = f"The stats file {name} does not exist."
         raise Exception(msg)
     os.remove(outf)
     # remove the KID stats
     outf = os.path.join(
-        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}_kid.npz"
-    )
+        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}_kid.npz")
     if not os.path.exists(outf):
         msg = f"The stats file {name} does not exist."
         raise Exception(msg)
@@ -532,17 +395,8 @@ Cache a custom dataset statistics file
 """
 
 
-def make_custom_stats(
-    name,
-    fdir,
-    num=None,
-    mode="clean",
-    model_name="inception_v3",
-    num_workers=0,
-    batch_size=64,
-    device=torch.device("cuda"),
-    verbose=True,
-):
+def make_custom_stats(name, fdir, num=None, mode="clean", model_name="inception_v3",
+                      num_workers=0, batch_size=64, device=torch.device("cuda"), verbose=True):
     stats_folder = os.path.join(os.path.dirname(cleanfid.__file__), "stats")
     os.makedirs(stats_folder, exist_ok=True)
     split, res = "custom", "na"
@@ -551,8 +405,7 @@ def make_custom_stats(
     else:
         model_modifier = "_" + model_name
     outf = os.path.join(
-        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}.npz".lower()
-    )
+        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}.npz".lower())
     # if the custom stat file already exists
     if os.path.exists(outf):
         msg = f"The statistics file {name} already exists. "
@@ -563,31 +416,21 @@ def make_custom_stats(
         custom_fn_resize = None
         custom_image_tranform = None
     elif model_name == "clip_vit_b_32":
-        from causvid.evaluation.coco_eval.cleanfid.clip_features import (
-            CLIP_fx, img_preprocess_clip)
-
+        from causvid.evaluation.coco_eval.cleanfid.clip_features import CLIP_fx, img_preprocess_clip
         clip_fx = CLIP_fx("ViT-B/32")
         feat_model = clip_fx
         custom_fn_resize = img_preprocess_clip
         custom_image_tranform = None
     else:
-        raise ValueError(f"The entered model name - {model_name} was not recognized.")
+        raise ValueError(
+            f"The entered model name - {model_name} was not recognized.")
 
     # get all inception features for folder images
-    np_feats = get_folder_features(
-        fdir,
-        feat_model,
-        num_workers=num_workers,
-        num=num,
-        batch_size=batch_size,
-        device=device,
-        verbose=verbose,
-        mode=mode,
-        description=f"custom stats: {
-                                       os.path.basename(fdir)} : ",
-        custom_image_tranform=custom_image_tranform,
-        custom_fn_resize=custom_fn_resize,
-    )
+    np_feats = get_folder_features(fdir, feat_model, num_workers=num_workers, num=num,
+                                   batch_size=batch_size, device=device, verbose=verbose,
+                                   mode=mode, description=f"custom stats: {os.path.basename(fdir)} : ",
+                                   custom_image_tranform=custom_image_tranform,
+                                   custom_fn_resize=custom_fn_resize)
 
     mu = np.mean(np_feats, axis=0)
     sigma = np.cov(np_feats, rowvar=False)
@@ -596,32 +439,19 @@ def make_custom_stats(
 
     # KID stats
     outf = os.path.join(
-        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}_kid.npz".lower()
-    )
+        stats_folder, f"{name}_{mode}{model_modifier}_{split}_{res}_kid.npz".lower())
     print(f"saving custom KID stats to {outf}")
     np.savez_compressed(outf, feats=np_feats)
 
 
-def compute_kid(
-    fdir1=None,
-    fdir2=None,
-    gen=None,
-    mode="clean",
-    num_workers=12,
-    batch_size=32,
-    device=torch.device("cuda"),
-    dataset_name="FFHQ",
-    dataset_res=1024,
-    dataset_split="train",
-    num_gen=50_000,
-    z_dim=512,
-    verbose=True,
-    use_dataparallel=True,
-):
+def compute_kid(fdir1=None, fdir2=None, gen=None,
+                mode="clean", num_workers=12, batch_size=32,
+                device=torch.device("cuda"), dataset_name="FFHQ",
+                dataset_res=1024, dataset_split="train", num_gen=50_000, z_dim=512,
+                verbose=True, use_dataparallel=True):
     # build the feature extractor based on the mode
     feat_model = build_feature_extractor(
-        mode, device, use_dataparallel=use_dataparallel
-    )
+        mode, device, use_dataparallel=use_dataparallel)
 
     # if both dirs are specified, compute KID between folders
     if fdir1 is not None and fdir2 is not None:
@@ -629,28 +459,14 @@ def compute_kid(
             print("compute KID between two folders")
         # get all inception features for the first folder
         fbname1 = os.path.basename(fdir1)
-        np_feats1 = get_folder_features(
-            fdir1,
-            feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
-            description=f"KID {fbname1} : ",
-            verbose=verbose,
-        )
+        np_feats1 = get_folder_features(fdir1, feat_model, num_workers=num_workers,
+                                        batch_size=batch_size, device=device, mode=mode,
+                                        description=f"KID {fbname1} : ", verbose=verbose)
         # get all inception features for the second folder
         fbname2 = os.path.basename(fdir2)
-        np_feats2 = get_folder_features(
-            fdir2,
-            feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
-            description=f"KID {fbname2} : ",
-            verbose=verbose,
-        )
+        np_feats2 = get_folder_features(fdir2, feat_model, num_workers=num_workers,
+                                        batch_size=batch_size, device=device, mode=mode,
+                                        description=f"KID {fbname2} : ", verbose=verbose)
         score = kernel_distance(np_feats1, np_feats2)
         return score
 
@@ -658,26 +474,13 @@ def compute_kid(
     elif fdir1 is not None and fdir2 is None:
         if verbose:
             print(f"compute KID of a folder with {dataset_name} statistics")
-        ref_feats = get_reference_statistics(
-            dataset_name,
-            dataset_res,
-            mode=mode,
-            seed=0,
-            split=dataset_split,
-            metric="KID",
-        )
+        ref_feats = get_reference_statistics(dataset_name, dataset_res,
+                                             mode=mode, seed=0, split=dataset_split, metric="KID")
         fbname = os.path.basename(fdir1)
         # get all inception features for folder images
-        np_feats = get_folder_features(
-            fdir1,
-            feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
-            description=f"KID {fbname} : ",
-            verbose=verbose,
-        )
+        np_feats = get_folder_features(fdir1, feat_model, num_workers=num_workers,
+                                       batch_size=batch_size, device=device, mode=mode,
+                                       description=f"KID {fbname} : ", verbose=verbose)
         score = kernel_distance(ref_feats, np_feats)
         return score
 
@@ -687,26 +490,13 @@ def compute_kid(
             print(f"compute KID of a model, using references in fdir2")
         # get all inception features for the second folder
         fbname2 = os.path.basename(fdir2)
-        ref_feats = get_folder_features(
-            fdir2,
-            feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
-            description=f"KID {fbname2} : ",
-        )
+        ref_feats = get_folder_features(fdir2, feat_model, num_workers=num_workers,
+                                        batch_size=batch_size, device=device, mode=mode,
+                                        description=f"KID {fbname2} : ")
         # Generate test features
-        np_feats = get_model_features(
-            gen,
-            feat_model,
-            mode=mode,
-            z_dim=z_dim,
-            num_gen=num_gen,
-            desc="KID model: ",
-            batch_size=batch_size,
-            device=device,
-        )
+        np_feats = get_model_features(gen, feat_model, mode=mode,
+                                      z_dim=z_dim, num_gen=num_gen, desc="KID model: ",
+                                      batch_size=batch_size, device=device)
         score = kernel_distance(ref_feats, np_feats)
         return score
 
@@ -714,72 +504,42 @@ def compute_kid(
     elif gen is not None:
         if verbose:
             print(
-                f"compute KID of a model with {dataset_name}-{dataset_res} statistics"
-            )
-        ref_feats = get_reference_statistics(
-            dataset_name,
-            dataset_res,
-            mode=mode,
-            seed=0,
-            split=dataset_split,
-            metric="KID",
-        )
+                f"compute KID of a model with {dataset_name}-{dataset_res} statistics")
+        ref_feats = get_reference_statistics(dataset_name, dataset_res,
+                                             mode=mode, seed=0, split=dataset_split, metric="KID")
         # Generate test features
-        np_feats = get_model_features(
-            gen,
-            feat_model,
-            mode=mode,
-            z_dim=z_dim,
-            num_gen=num_gen,
-            desc="KID model: ",
-            batch_size=batch_size,
-            device=device,
-            verbose=verbose,
-        )
+        np_feats = get_model_features(gen, feat_model, mode=mode,
+                                      z_dim=z_dim, num_gen=num_gen, desc="KID model: ",
+                                      batch_size=batch_size, device=device, verbose=verbose)
         score = kernel_distance(ref_feats, np_feats)
         return score
 
     else:
-        raise ValueError("invalid combination of directories and models entered")
+        raise ValueError(
+            "invalid combination of directories and models entered")
 
 
 """
 custom_image_tranform:
-    function that takes an np_array image as input [0,255] and 
+    function that takes an np_array image as input [0,255] and
     applies a custom transform such as cropping
 """
 
 
-def compute_fid(
-    fdir1=None,
-    fdir2=None,
-    gen=None,
-    mode="clean",
-    model_name="inception_v3",
-    num_workers=12,
-    batch_size=32,
-    device=torch.device("cuda"),
-    dataset_name="FFHQ",
-    dataset_res=1024,
-    dataset_split="train",
-    num_gen=50_000,
-    z_dim=512,
-    custom_feat_extractor=None,
-    verbose=True,
-    custom_image_tranform=None,
-    custom_fn_resize=None,
-    use_dataparallel=True,
-    pred_arr=None,
-):
+def compute_fid(fdir1=None, fdir2=None, gen=None,
+                mode="clean", model_name="inception_v3", num_workers=12,
+                batch_size=32, device=torch.device("cuda"), dataset_name="FFHQ",
+                dataset_res=1024, dataset_split="train", num_gen=50_000, z_dim=512,
+                custom_feat_extractor=None, verbose=True,
+                custom_image_tranform=None, custom_fn_resize=None,
+                use_dataparallel=True, pred_arr=None
+                ):
     # build the feature extractor based on the mode and the model to be used
     if custom_feat_extractor is None and model_name == "inception_v3":
         feat_model = build_feature_extractor(
-            mode, device, use_dataparallel=use_dataparallel
-        )
+            mode, device, use_dataparallel=use_dataparallel)
     elif custom_feat_extractor is None and model_name == "clip_vit_b_32":
-        from causvid.evaluation.coco_eval.cleanfid.clip_features import (
-            CLIP_fx, img_preprocess_clip)
-
+        from causvid.evaluation.coco_eval.cleanfid.clip_features import CLIP_fx, img_preprocess_clip
         clip_fx = CLIP_fx("ViT-B/32", device=device)
         feat_model = clip_fx
         custom_fn_resize = img_preprocess_clip
@@ -790,39 +550,22 @@ def compute_fid(
     if fdir1 is not None and fdir2 is not None:
         if verbose:
             print("compute FID between two folders")
-        score = compare_folders(
-            fdir1,
-            fdir2,
-            feat_model,
-            mode=mode,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            device=device,
-            custom_image_tranform=custom_image_tranform,
-            custom_fn_resize=custom_fn_resize,
-            verbose=verbose,
-        )
+        score = compare_folders(fdir1, fdir2, feat_model,
+                                mode=mode, batch_size=batch_size,
+                                num_workers=num_workers, device=device,
+                                custom_image_tranform=custom_image_tranform,
+                                custom_fn_resize=custom_fn_resize,
+                                verbose=verbose)
         return score
 
     # compute fid of a folder
     elif fdir1 is not None and fdir2 is None:
         if verbose:
             print(f"compute FID of a folder with {dataset_name} statistics")
-        score = fid_folder(
-            fdir1,
-            dataset_name,
-            dataset_res,
-            dataset_split,
-            model=feat_model,
-            mode=mode,
-            model_name=model_name,
-            custom_fn_resize=custom_fn_resize,
-            custom_image_tranform=custom_image_tranform,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            verbose=verbose,
-        )
+        score = fid_folder(fdir1, dataset_name, dataset_res, dataset_split,
+                           model=feat_model, mode=mode, model_name=model_name,
+                           custom_fn_resize=custom_fn_resize, custom_image_tranform=custom_image_tranform,
+                           num_workers=num_workers, batch_size=batch_size, device=device, verbose=verbose)
         return score
 
     # compute fid for a generator, using images in fdir2
@@ -831,33 +574,19 @@ def compute_fid(
             print(f"compute FID of a model, using references in fdir2")
         # get all inception features for the second folder
         fbname2 = os.path.basename(fdir2)
-        np_feats2 = get_folder_features(
-            fdir2,
-            feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
-            description=f"FID {fbname2} : ",
-            verbose=verbose,
-            custom_fn_resize=custom_fn_resize,
-            custom_image_tranform=custom_image_tranform,
-        )
+        np_feats2 = get_folder_features(fdir2, feat_model, num_workers=num_workers,
+                                        batch_size=batch_size, device=device, mode=mode,
+                                        description=f"FID {fbname2} : ", verbose=verbose,
+                                        custom_fn_resize=custom_fn_resize,
+                                        custom_image_tranform=custom_image_tranform)
         mu2 = np.mean(np_feats2, axis=0)
         sigma2 = np.cov(np_feats2, rowvar=False)
         # Generate test features
-        np_feats = get_model_features(
-            gen,
-            feat_model,
-            mode=mode,
-            z_dim=z_dim,
-            num_gen=num_gen,
-            custom_fn_resize=custom_fn_resize,
-            custom_image_tranform=custom_image_tranform,
-            batch_size=batch_size,
-            device=device,
-            verbose=verbose,
-        )
+        np_feats = get_model_features(gen, feat_model, mode=mode,
+                                      z_dim=z_dim, num_gen=num_gen,
+                                      custom_fn_resize=custom_fn_resize,
+                                      custom_image_tranform=custom_image_tranform,
+                                      batch_size=batch_size, device=device, verbose=verbose)
 
         mu = np.mean(np_feats, axis=0)
         sigma = np.cov(np_feats, rowvar=False)
@@ -868,25 +597,12 @@ def compute_fid(
     elif gen is not None:
         if verbose:
             print(
-                f"compute FID of a model with {dataset_name}-{dataset_res} statistics"
-            )
-        score = fid_model(
-            gen,
-            dataset_name,
-            dataset_res,
-            dataset_split,
-            model=feat_model,
-            model_name=model_name,
-            z_dim=z_dim,
-            num_gen=num_gen,
-            mode=mode,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            custom_image_tranform=custom_image_tranform,
-            custom_fn_resize=custom_fn_resize,
-            device=device,
-            verbose=verbose,
-        )
+                f"compute FID of a model with {dataset_name}-{dataset_res} statistics")
+        score = fid_model(gen, dataset_name, dataset_res, dataset_split,
+                          model=feat_model, model_name=model_name, z_dim=z_dim, num_gen=num_gen,
+                          mode=mode, num_workers=num_workers, batch_size=batch_size,
+                          custom_image_tranform=custom_image_tranform, custom_fn_resize=custom_fn_resize,
+                          device=device, verbose=verbose)
         return score
 
     elif pred_arr is not None:
@@ -894,31 +610,20 @@ def compute_fid(
             print(f"compute FID of a model, using references in fdir2")
         # get all inception features for the second folder
         fbname2 = os.path.basename(fdir2)
-        np_feats2 = get_folder_features(
-            fdir2,
-            feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
-            description=f"FID {fbname2} : ",
-            verbose=verbose,
-            custom_fn_resize=custom_fn_resize,
-            custom_image_tranform=custom_image_tranform,
-        )
+        np_feats2 = get_folder_features(fdir2, feat_model, num_workers=num_workers,
+                                        batch_size=batch_size, device=device, mode=mode,
+                                        description=f"FID {fbname2} : ", verbose=verbose,
+                                        custom_fn_resize=custom_fn_resize,
+                                        custom_image_tranform=custom_image_tranform)
         mu2 = np.mean(np_feats2, axis=0)
         sigma2 = np.cov(np_feats2, rowvar=False)
 
         # compute fid statistcs using the numpy array
         np_feats = get_array_features(
-            pred_arr,
-            model=feat_model,
-            num_workers=num_workers,
-            batch_size=batch_size,
-            device=device,
-            mode=mode,
+            pred_arr, model=feat_model, num_workers=num_workers,
+            batch_size=batch_size, device=device, mode=mode,
             custom_fn_resize=custom_fn_resize,
-            custom_image_tranform=custom_image_tranform,
+            custom_image_tranform=custom_image_tranform
         )
         mu = np.mean(np_feats, axis=0)
         sigma = np.cov(np_feats, rowvar=False)
@@ -926,4 +631,5 @@ def compute_fid(
         return fid
         # return fid, np_feats, np_feats2
     else:
-        raise ValueError("invalid combination of directories and models entered")
+        raise ValueError(
+            "invalid combination of directories and models entered")

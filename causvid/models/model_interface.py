@@ -1,10 +1,8 @@
-import types
-from abc import ABC, abstractmethod
-from typing import List, Optional
-
-import torch
-
 from causvid.scheduler import SchedulerInterface
+from abc import abstractmethod, ABC
+from typing import List, Optional
+import torch
+import types
 
 
 class DiffusionModelInterface(ABC, torch.nn.Module):
@@ -12,14 +10,11 @@ class DiffusionModelInterface(ABC, torch.nn.Module):
 
     @abstractmethod
     def forward(
-        self,
-        noisy_image_or_video: torch.Tensor,
-        conditional_dict: dict,
-        timestep: torch.Tensor,
-        kv_cache: Optional[List[dict]] = None,
+        self, noisy_image_or_video: torch.Tensor, conditional_dict: dict,
+        timestep: torch.Tensor, kv_cache: Optional[List[dict]] = None,
         crossattn_cache: Optional[List[dict]] = None,
         current_start: Optional[int] = None,
-        current_end: Optional[int] = None,
+        current_end: Optional[int] = None
     ) -> torch.Tensor:
         """
         A method to run diffusion model.
@@ -42,14 +37,11 @@ class DiffusionModelInterface(ABC, torch.nn.Module):
         """
         scheduler = self.scheduler
         scheduler.convert_x0_to_noise = types.MethodType(
-            SchedulerInterface.convert_x0_to_noise, scheduler
-        )
+            SchedulerInterface.convert_x0_to_noise, scheduler)
         scheduler.convert_noise_to_x0 = types.MethodType(
-            SchedulerInterface.convert_noise_to_x0, scheduler
-        )
+            SchedulerInterface.convert_noise_to_x0, scheduler)
         scheduler.convert_velocity_to_x0 = types.MethodType(
-            SchedulerInterface.convert_velocity_to_x0, scheduler
-        )
+            SchedulerInterface.convert_velocity_to_x0, scheduler)
         self.scheduler = scheduler
         return scheduler
 
@@ -109,9 +101,7 @@ class TextEncoderInterface(ABC, torch.nn.Module):
 
 class InferencePipelineInterface(ABC):
     @abstractmethod
-    def inference_with_trajectory(
-        self, noise: torch.Tensor, conditional_dict: dict
-    ) -> torch.Tensor:
+    def inference_with_trajectory(self, noise: torch.Tensor, conditional_dict: dict) -> torch.Tensor:
         """
         Run inference with the given diffusion / distilled generators.
         Input:

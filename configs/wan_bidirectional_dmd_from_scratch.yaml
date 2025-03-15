@@ -19,7 +19,7 @@ real_guidance_scale: 3.5
 generator_task: bidirectional_video
 real_task_type: bidirectional_video
 fake_task_type: bidirectional_video
-denoising_loss_type: flow 
+denoising_loss_type: flow
 mixed_precision: true
 seed: 0
 wandb_host: WANDB_HOST
@@ -45,4 +45,4 @@ image_or_video_shape:
 output_path: /mnt/localssd/wan_bidirectional_dmd_from_scratch
 distillation_loss: dmd
 gradient_checkpointing: true
-backward_simulation: false 
+backward_simulation: false

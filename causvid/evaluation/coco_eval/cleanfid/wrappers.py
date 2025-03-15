@@ -1,19 +1,17 @@
+from PIL import Image
 import numpy as np
 import torch
-from PIL import Image
-
-from causvid.evaluation.coco_eval.cleanfid.features import (
-    build_feature_extractor, get_reference_statistics)
-from causvid.evaluation.coco_eval.cleanfid.fid import (fid_from_feats,
-                                                       get_batch_features)
+from causvid.evaluation.coco_eval.cleanfid.features import build_feature_extractor, get_reference_statistics
+from causvid.evaluation.coco_eval.cleanfid.fid import get_batch_features, fid_from_feats
 from causvid.evaluation.coco_eval.cleanfid.resize import build_resizer
+
 
 """
 A helper class that allowing adding the images one batch at a time.
 """
 
 
-class CleanFID:
+class CleanFID():
     def __init__(self, mode="clean", model_name="inception_v3", device="cuda"):
         self.real_features = []
         self.gen_features = []
@@ -23,9 +21,7 @@ class CleanFID:
             self.feat_model = build_feature_extractor(mode, device)
             self.fn_resize = build_resizer(mode)
         elif model_name == "clip_vit_b_32":
-            from causvid.evaluation.coco_eval.cleanfid.clip_features import (
-                CLIP_fx, img_preprocess_clip)
-
+            from causvid.evaluation.coco_eval.cleanfid.clip_features import CLIP_fx, img_preprocess_clip
             clip_fx = CLIP_fx("ViT-B/32")
             self.feat_model = clip_fx
             self.fn_resize = img_preprocess_clip
@@ -45,11 +41,8 @@ class CleanFID:
             x_feat = get_batch_features(x_t, self.feat_model, self.device)
         elif isinstance(x, np.ndarray):
             x_np_resized = self.fn_resize(x)
-            x_t = (
-                torch.tensor(x_np_resized.transpose((2, 0, 1)))
-                .unsqueeze(0)
-                .to(self.device)
-            )
+            x_t = torch.tensor(x_np_resized.transpose(
+                (2, 0, 1))).unsqueeze(0).to(self.device)
             # normalization happens inside the self.feat_model, expected image range here is [0,255]
             x_feat = get_batch_features(x_t, self.feat_model, self.device)
         elif isinstance(x, torch.Tensor):
@@ -64,7 +57,8 @@ class CleanFID:
                 x_np = x[_].cpu().numpy().transpose((1, 2, 0))
                 l_x_np_resized.append(self.fn_resize(x_np)[None,])
             x_np_resized = np.concatenate(l_x_np_resized)
-            x_t = torch.tensor(x_np_resized.transpose((0, 3, 1, 2))).to(self.device)
+            x_t = torch.tensor(x_np_resized.transpose(
+                (0, 3, 1, 2))).to(self.device)
             # normalization happens inside the self.feat_model, expected image range here is [0,255]
             x_feat = get_batch_features(x_t, self.feat_model, self.device)
         else:

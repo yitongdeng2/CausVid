@@ -1,15 +1,12 @@
-import argparse
-import os
-
-import torch
-from diffusers.utils import export_to_video
+from causvid.models.wan.bidirectional_inference import BidirectionalInferencePipeline
 from huggingface_hub import hf_hub_download
+from diffusers.utils import export_to_video
+from causvid.data import TextDataset
 from omegaconf import OmegaConf
 from tqdm import tqdm
-
-from causvid.data import TextDataset
-from causvid.models.wan.bidirectional_inference import \
-    BidirectionalInferencePipeline
+import argparse
+import torch
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config_path", type=str)
@@ -26,37 +23,24 @@ config = OmegaConf.load(args.config_path)
 
 pipe = BidirectionalInferencePipeline(config, device="cuda")
 
-state_dict = torch.load(
-    os.path.join(args.checkpoint_folder, "model.pt"), map_location="cpu"
-)["generator"]
+state_dict = torch.load(os.path.join(args.checkpoint_folder, "model.pt"), map_location="cpu")[
+    'generator']
 
 pipe.generator.load_state_dict(state_dict)
 
 pipe = pipe.to(device="cuda", dtype=torch.bfloat16)
 
-dataset = TextDataset("sample_dataset/MovieGenVideoBench.txt")
+dataset = TextDataset('sample_dataset/MovieGenVideoBench.txt')
 
 for index in tqdm(range(len(dataset))):
     prompt = dataset[index]
-    video = (
-        pipe.inference(
-            noise=torch.randn(
-                1,
-                21,
-                16,
-                60,
-                104,
-                generator=torch.Generator(device="cuda").manual_seed(42),
-                dtype=torch.bfloat16,
-                device="cuda",
-            ),
-            text_prompts=[prompt],
-        )[0]
-        .permute(1, 2, 3, 0)
-        .cpu()
-        .numpy()
-    )
+    video = pipe.inference(
+        noise=torch.randn(
+            1, 21, 16, 60, 104, generator=torch.Generator(device="cuda").manual_seed(42),
+            dtype=torch.bfloat16, device="cuda"
+        ),
+        text_prompts=[prompt]
+    )[0].permute(1, 2, 3, 0).cpu().numpy()
 
     export_to_video(
-        video, os.path.join(args.checkpoint_folder, f"output_{index:03d}.mp4"), fps=16
-    )
+        video, os.path.join(args.checkpoint_folder, f"output_{index:03d}.mp4"), fps=16)

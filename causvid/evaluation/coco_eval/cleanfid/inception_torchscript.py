@@ -1,10 +1,8 @@
-import contextlib
 import os
-
 import torch
 import torch.nn as nn
-
 from causvid.evaluation.coco_eval.cleanfid.downloads_helper import *
+import contextlib
 
 
 @contextlib.contextmanager
@@ -12,11 +10,11 @@ def disable_gpu_fuser_on_pt19():
     # On PyTorch 1.9 a CUDA fuser bug prevents the Inception JIT model to run. See
     #   https://github.com/GaParmar/clean-fid/issues/5
     #   https://github.com/pytorch/pytorch/issues/64062
-    if torch.__version__.startswith("1.9."):
+    if torch.__version__.startswith('1.9.'):
         old_val = torch._C._jit_can_fuse_on_gpu()
         torch._C._jit_override_can_fuse_on_gpu(False)
     yield
-    if torch.__version__.startswith("1.9."):
+    if torch.__version__.startswith('1.9.'):
         torch._C._jit_override_can_fuse_on_gpu(old_val)
 
 
@@ -55,7 +53,5 @@ class InceptionV3W(nn.Module):
                 # apply normalization
                 x1 = x - 128
                 x2 = x1 / 128
-                features = self.layers.forward(
-                    x2,
-                ).view((bs, 2048))
+                features = self.layers.forward(x2, ).view((bs, 2048))
             return features

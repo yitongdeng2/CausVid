@@ -1,12 +1,13 @@
+from causvid.models.model_interface import (
+    DiffusionModelInterface,
+    TextEncoderInterface,
+    VAEInterface
+)
+from diffusers import UNet2DConditionModel, AutoencoderKL, DDIMScheduler
+from transformers import CLIPTextModel, CLIPTextModelWithProjection
+from transformers import AutoTokenizer
 from typing import List
-
 import torch
-from diffusers import AutoencoderKL, DDIMScheduler, UNet2DConditionModel
-from transformers import (AutoTokenizer, CLIPTextModel,
-                          CLIPTextModelWithProjection)
-
-from causvid.models.model_interface import (DiffusionModelInterface,
-                                            TextEncoderInterface, VAEInterface)
 
 
 class SDXLTextEncoder(TextEncoderInterface):
@@ -14,29 +15,19 @@ class SDXLTextEncoder(TextEncoderInterface):
         super().__init__()
 
         self.text_encoder_one = CLIPTextModel.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
-            subfolder="text_encoder",
-            revision=None,
+            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="text_encoder", revision=None
         )
 
         self.text_encoder_two = CLIPTextModelWithProjection.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
-            subfolder="text_encoder_2",
-            revision=None,
+            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="text_encoder_2", revision=None
         )
 
         self.tokenizer_one = AutoTokenizer.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
-            subfolder="tokenizer",
-            revision=None,
-            use_fast=False,
+            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="tokenizer", revision=None, use_fast=False
         )
 
         self.tokenizer_two = AutoTokenizer.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
-            subfolder="tokenizer_2",
-            revision=None,
-            use_fast=False,
+            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="tokenizer_2", revision=None, use_fast=False
         )
 
     @property
@@ -63,14 +54,11 @@ class SDXLTextEncoder(TextEncoderInterface):
                 - "pooled_prompt_embeds" (torch.Tensor): Pooled embeddings (final layer output)
                 from the second text encoder, of shape [batch_size, hidden_dim].
         """
-        text_input_ids_one = batch["text_input_ids_one"]
-        text_input_ids_two = batch["text_input_ids_two"]
+        text_input_ids_one = batch['text_input_ids_one']
+        text_input_ids_two = batch['text_input_ids_two']
         prompt_embeds_list = []
 
-        for text_input_ids, text_encoder in zip(
-            [text_input_ids_one, text_input_ids_two],
-            [self.text_encoder_one, self.text_encoder_two],
-        ):
+        for text_input_ids, text_encoder in zip([text_input_ids_one, text_input_ids_two], [self.text_encoder_one, self.text_encoder_two]):
             prompt_embeds = text_encoder(
                 text_input_ids.to(self.device),
                 output_hidden_states=True,
@@ -86,7 +74,8 @@ class SDXLTextEncoder(TextEncoderInterface):
 
         prompt_embeds = torch.cat(prompt_embeds_list, dim=-1)
         # use the second text encoder's pooled prompt embeds (overwrite in for loop)
-        pooled_prompt_embeds = pooled_prompt_embeds.view(len(text_input_ids_one), -1)
+        pooled_prompt_embeds = pooled_prompt_embeds.view(
+            len(text_input_ids_one), -1)
 
         output_dict = {
             "prompt_embeds": prompt_embeds,
@@ -104,7 +93,7 @@ class SDXLTextEncoder(TextEncoderInterface):
             padding="max_length",
             max_length=self.tokenizer_one.model_max_length,
             truncation=True,
-            return_tensors="pt",
+            return_tensors="pt"
         ).input_ids
 
         text_input_ids_two = self.tokenizer_two(
@@ -112,12 +101,12 @@ class SDXLTextEncoder(TextEncoderInterface):
             padding="max_length",
             max_length=self.tokenizer_two.model_max_length,
             truncation=True,
-            return_tensors="pt",
+            return_tensors="pt"
         ).input_ids
 
         prompt_dict = {
-            "text_input_ids_one": text_input_ids_one,
-            "text_input_ids_two": text_input_ids_two,
+            'text_input_ids_one': text_input_ids_one,
+            'text_input_ids_two': text_input_ids_two
         }
         return prompt_dict
 
@@ -131,7 +120,8 @@ class SDXLVAE(VAEInterface):
         super().__init__()
 
         self.vae = AutoencoderKL.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae"
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            subfolder="vae"
         )
 
     def decode_to_pixel(self, latent: torch.Tensor) -> torch.Tensor:
@@ -148,13 +138,15 @@ class SDXLWrapper(DiffusionModelInterface):
         super().__init__()
 
         self.model = UNet2DConditionModel.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="unet"
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            subfolder="unet"
         )
 
         self.add_time_ids = self._build_condition_input(resolution=1024)
 
         self.scheduler = DDIMScheduler.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0", subfolder="scheduler"
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            subfolder="scheduler"
         )
 
         super().post_init()
@@ -163,13 +155,9 @@ class SDXLWrapper(DiffusionModelInterface):
         self.model.enable_gradient_checkpointing()
 
     def forward(
-        self,
-        noisy_image_or_video: torch.Tensor,
-        conditional_dict: dict,
-        timestep: torch.Tensor,
-        kv_cache: List[dict] = None,
-        current_start: int = None,
-        current_end: int = None,
+        self, noisy_image_or_video: torch.Tensor, conditional_dict: dict,
+        timestep: torch.Tensor, kv_cache: List[dict] = None, current_start: int = None,
+        current_end: int = None
     ) -> torch.Tensor:
         # TODO: Check how to apply gradient checkpointing
         # [B, 1, C, H, W] -> [B, C, H, W]
@@ -179,21 +167,21 @@ class SDXLWrapper(DiffusionModelInterface):
         timestep = timestep.squeeze(1)
 
         added_conditions = {
-            "time_ids": self.add_time_ids.repeat(noisy_image_or_video.shape[0], 1).to(
-                noisy_image_or_video.device
-            ),
-            "text_embeds": conditional_dict["pooled_prompt_embeds"],
+            "time_ids": self.add_time_ids.repeat(noisy_image_or_video.shape[0], 1).to(noisy_image_or_video.device),
+            "text_embeds": conditional_dict["pooled_prompt_embeds"]
         }
 
         pred_noise = self.model(
             sample=noisy_image_or_video,
             timestep=timestep,
-            encoder_hidden_states=conditional_dict["prompt_embeds"],
-            added_cond_kwargs=added_conditions,
+            encoder_hidden_states=conditional_dict['prompt_embeds'],
+            added_cond_kwargs=added_conditions
         ).sample
 
         pred_x0 = self.scheduler.convert_noise_to_x0(
-            noise=pred_noise, xt=noisy_image_or_video, timestep=timestep
+            noise=pred_noise,
+            xt=noisy_image_or_video,
+            timestep=timestep
         )
 
         # [B, C, H, W] -> [B, 1, C, H, W]

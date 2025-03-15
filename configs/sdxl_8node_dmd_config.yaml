@@ -39,4 +39,3 @@ image_or_video_shape:
 output_path: /mnt/localssd/sdxl_logs
 distillation_loss: dmd
 gradient_checkpointing: false
-

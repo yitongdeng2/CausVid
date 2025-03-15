@@ -1,13 +1,11 @@
 """
 Helpers for resizing with multiple CPU cores
 """
-
 import os
-
 import numpy as np
 import torch
-import torch.nn.functional as F
 from PIL import Image
+import torch.nn.functional as F
 
 
 def build_resizer(mode):
@@ -35,7 +33,7 @@ def make_resizer(library, quantize_after, filter, output_size):
             "bilinear": Image.BILINEAR,
             "nearest": Image.NEAREST,
             "lanczos": Image.LANCZOS,
-            "box": Image.BOX,
+            "box": Image.BOX
         }
 
         def func(x):
@@ -43,19 +41,18 @@ def make_resizer(library, quantize_after, filter, output_size):
             x = x.resize(output_size, resample=name_to_filter[filter])
             x = np.asarray(x).clip(0, 255).astype(np.uint8)
             return x
-
     elif library == "PIL" and not quantize_after:
         name_to_filter = {
             "bicubic": Image.BICUBIC,
             "bilinear": Image.BILINEAR,
             "nearest": Image.NEAREST,
             "lanczos": Image.LANCZOS,
-            "box": Image.BOX,
+            "box": Image.BOX
         }
         s1, s2 = output_size
 
         def resize_single_channel(x_np):
-            img = Image.fromarray(x_np.astype(np.float32), mode="F")
+            img = Image.fromarray(x_np.astype(np.float32), mode='F')
             img = img.resize(output_size, resample=name_to_filter[filter])
             return np.asarray(img).clip(0, 255).reshape(s2, s1, 1)
 
@@ -63,10 +60,8 @@ def make_resizer(library, quantize_after, filter, output_size):
             x = [resize_single_channel(x[:, :, idx]) for idx in range(3)]
             x = np.concatenate(x, axis=2).astype(np.float32)
             return x
-
     elif library == "PyTorch":
         import warnings
-
         # ignore the numpy warnings
         warnings.filterwarnings("ignore")
 
@@ -77,10 +72,8 @@ def make_resizer(library, quantize_after, filter, output_size):
             if quantize_after:
                 x = x.astype(np.uint8)
             return x
-
     elif library == "TensorFlow":
         import warnings
-
         # ignore the numpy warnings
         warnings.filterwarnings("ignore")
         import tensorflow as tf
@@ -92,16 +85,14 @@ def make_resizer(library, quantize_after, filter, output_size):
             if quantize_after:
                 x = x.astype(np.uint8)
             return x
-
     elif library == "OpenCV":
         import cv2
-
         name_to_filter = {
             "bilinear": cv2.INTER_LINEAR,
             "bicubic": cv2.INTER_CUBIC,
             "lanczos": cv2.INTER_LANCZOS4,
             "nearest": cv2.INTER_NEAREST,
-            "area": cv2.INTER_AREA,
+            "area": cv2.INTER_AREA
         }
 
         def func(x):
@@ -110,9 +101,8 @@ def make_resizer(library, quantize_after, filter, output_size):
             if quantize_after:
                 x = x.astype(np.uint8)
             return x
-
     else:
-        raise NotImplementedError("library [%s] is not include" % library)
+        raise NotImplementedError('library [%s] is not include' % library)
     return func
 
 
