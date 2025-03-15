@@ -11,8 +11,8 @@ generator_fsdp_wrap_strategy: size
 text_encoder_fsdp_wrap_strategy: size
 mixed_precision: true
 seed: 0
-wandb_host: https://adobesensei.wandb.io/
-wandb_key: local-4c966cd9adf1ca53819ec33419988cfe04b0bb07
+wandb_host: WANDB_HOST
+wandb_key: WANDB_KEY
 wandb_entity: tyin
 wandb_project: causvid
 wandb_name: wan_causal_ode
