@@ -106,7 +106,7 @@ Causal DMD Training.
 torchrun --nnodes 8 --nproc_per_node=8 --rdzv_id=5235 \
     --rdzv_backend=c10d \
     --rdzv_endpoint $MASTER_ADDR causvid/train_distillation.py \
-    --config_path  configs/wan_causal_ode.yaml  --no_visualize
+    --config_path  configs/wan_causal_dmd.yaml  --no_visualize
 ```
 
 ## TODO 
