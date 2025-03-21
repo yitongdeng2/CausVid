@@ -1,3 +1,4 @@
+from causvid.models.wan.wan_base.modules.attention import attention
 from causvid.models.wan.wan_base.modules.model import (
     WanRMSNorm,
     rope_apply,
@@ -139,11 +140,7 @@ class CausalWanSelfAttention(nn.Module):
             kv_cache["k"][:, current_start:current_end] = roped_key
             kv_cache["v"][:, current_start:current_end] = v
 
-            x = torch.nn.functional.scaled_dot_product_attention(
-                roped_query.transpose(2, 1),
-                kv_cache["k"][:, :current_end].transpose(2, 1),
-                kv_cache["v"][:, :current_end].transpose(2, 1)
-            ).transpose(2, 1)
+            x = attention(roped_query, kv_cache["k"][:, :current_end], kv_cache["v"][:, :current_end])
 
         # output
         x = x.flatten(2)
