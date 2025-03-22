@@ -475,12 +475,12 @@ class DMD(nn.Module):
             ).unflatten(0, image_or_video_shape[:2])
 
         denoising_loss = self.denoising_loss_func(
-            x=generated_image,
-            x_pred=pred_fake_image,
-            noise=critic_noise,
+            x=generated_image.flatten(0, 1),
+            x_pred=pred_fake_image.flatten(0, 1),
+            noise=critic_noise.flatten(0, 1),
             noise_pred=pred_fake_noise,
             alphas_cumprod=self.scheduler.alphas_cumprod,
-            timestep=critic_timestep,
+            timestep=critic_timestep.flatten(0, 1),
             flow_pred=flow_pred
         )
 
