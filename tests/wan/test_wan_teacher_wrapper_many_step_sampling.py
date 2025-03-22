@@ -84,8 +84,7 @@ for index in tqdm(range(len(dataset))):
                 latents.flatten(0, 1)
             ).unflatten(dim=0, sizes=flow_pred.shape[:2])
 
-        decoded_video = vae.decode_to_pixel(latents)[0].permute(
-            1, 2, 3, 0).cpu().numpy() * 0.5 + 0.5
+        decoded_video = vae.decode_to_pixel(latents)[0].permute(0, 2, 3, 1).cpu().numpy() * 0.5 + 0.5
 
     export_to_video(
         decoded_video, f"test_wanx_wrapper_{index:04d}.mp4", fps=16)

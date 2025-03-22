@@ -30,7 +30,6 @@ with torch.no_grad():
     output = model(noise, conditional_dict, timetep)
     video = vae.decode_to_pixel(output)
 
-video = (video * 0.5 +
-         0.5).cpu().detach().to(torch.float32)[0].permute(1, 2, 3, 0).numpy()
+video = (video * 0.5 + 0.5).cpu().detach().to(torch.float32)[0].permute(0, 2, 3, 1).numpy()
 
 export_to_video(video, "output.mp4", fps=8)

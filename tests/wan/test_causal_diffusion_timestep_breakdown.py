@@ -48,8 +48,7 @@ for timestep in [100, 200, 300, 400, 500, 600, 700, 800, 900]:
     output = model(noisy_latent, conditional_dict, timestep)
 
     video = vae.decode_to_pixel(output)
-    video = (video * 0.5 +
-             0.5).cpu().detach().to(torch.float32)[0].permute(1, 2, 3, 0).numpy()
+    video = (video * 0.5 + 0.5).cpu().detach().to(torch.float32)[0].permute(0, 2, 3, 1).numpy()
 
     export_to_video(
         video, f"one_stpe_output_t={timestep[0, 0].item()}.mp4", fps=16)

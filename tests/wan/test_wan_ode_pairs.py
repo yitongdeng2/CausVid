@@ -23,7 +23,6 @@ for index, video_path in enumerate(sorted(glob.glob(args.data_path + "/*.pt"))):
 
     video = model.decode_to_pixel(video_latent)
 
-    video = (video * 0.5 + 0.5).clamp(0,
-                                      1)[0].permute(1, 2, 3, 0).cpu().numpy()
+    video = (video * 0.5 + 0.5).clamp(0, 1)[0].permute(0, 2, 3, 1).cpu().numpy()
     print(index, prompt)
     export_to_video(video, f"ode_output_{index:03d}.mp4", fps=16)

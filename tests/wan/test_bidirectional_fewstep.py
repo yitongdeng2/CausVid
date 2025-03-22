@@ -40,7 +40,7 @@ for index in tqdm(range(len(dataset))):
             dtype=torch.bfloat16, device="cuda"
         ),
         text_prompts=[prompt]
-    )[0].permute(1, 2, 3, 0).cpu().numpy()
+    )[0].permute(0, 2, 3, 1).cpu().numpy()
 
     export_to_video(
         video, os.path.join(args.checkpoint_folder, f"output_{index:03d}.mp4"), fps=16)

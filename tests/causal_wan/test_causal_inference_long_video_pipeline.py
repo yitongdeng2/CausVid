@@ -64,7 +64,7 @@ for prompt_index in tqdm(range(len(dataset))):
             start_latents=start_latents
         )
 
-        current_video = video[0].permute(1, 2, 3, 0).cpu().numpy()
+        current_video = video[0].permute(0, 2, 3, 1).cpu().numpy()
 
         start_frame = encode(pipeline.vae, (video[:, :, -9:-8] * 2.0 - 1.0).to(
             torch.bfloat16)).transpose(2, 1).to(torch.bfloat16)

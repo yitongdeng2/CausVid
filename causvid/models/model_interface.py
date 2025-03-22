@@ -82,7 +82,7 @@ class VAEInterface(ABC, torch.nn.Module):
     def decode_to_pixel(self, latent: torch.Tensor) -> torch.Tensor:
         """
         A method to decode a latent representation to an image or video.
-        Input: a tensor with shape [B, F, C, H // S, W // S] where S is the scale factor.
+        Input: a tensor with shape [B, F // T, C, H // S, W // S] where T and S are temporal and spatial compression factors.
         Output: a tensor with shape [B, F, C, H, W] where the number of frame is 1 for images.
         """
         pass

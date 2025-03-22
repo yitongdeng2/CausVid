@@ -39,7 +39,7 @@ for prompt_index in tqdm(range(len(dataset))):
     video = pipeline.inference(
         noise=sampled_noise,
         text_prompts=prompts
-    )[0].permute(1, 2, 3, 0).cpu().numpy()
+    )[0].permute(0, 2, 3, 1).cpu().numpy()
 
     export_to_video(
         video, os.path.join(args.checkpoint_folder, f"output_{prompt_index:03d}.mp4"), fps=16)

@@ -33,7 +33,7 @@ output = simulated_input[:, -1]
 # [B, F, C, H, W] -> [B, C, H, W]
 video = dmd_model.vae.decode_to_pixel(output).cpu().detach()
 
-video = ((video + 1.0) / 2.0).clamp(0, 1)[0].permute(1, 2, 3, 0).numpy()
+video = ((video + 1.0) / 2.0).clamp(0, 1)[0].permute(0, 2, 3, 1).numpy()
 
 export_to_video(video, "backward_simulated_video.mp4", fps=16)
 

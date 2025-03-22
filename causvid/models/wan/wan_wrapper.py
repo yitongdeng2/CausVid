@@ -86,6 +86,9 @@ class WanVAEWrapper(VAEInterface):
             for u in zs
         ]
         output = torch.stack(output, dim=0)
+        # from [batch_size, num_channels, num_frames, height, width]
+        # to [batch_size, num_frames, num_channels, height, width]
+        output = output.permute(0, 2, 1, 3, 4)
         return output
 
 
