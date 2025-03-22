@@ -8,6 +8,7 @@ from torch.distributed.fsdp import (
     ShardingStrategy,
     FullyShardedDataParallel as FSDP
 )
+from torchvision.utils import make_grid
 from datetime import timedelta, datetime
 import torch.distributed as dist
 from omegaconf import OmegaConf
@@ -143,13 +144,16 @@ def barrier():
         dist.barrier()
 
 
-def prepare_images_for_saving(images_tensor, height, width, grid_size=1, range_type="neg1pos1"):
-    if range_type != "uint8":
-        images_tensor = (images_tensor * 0.5 + 0.5).clamp(0, 1) * 255
+def prepare_for_saving(tensor, fps=16, caption=None):
+    # Convert range [-1, 1] to [0, 1]
+    tensor = (tensor * 0.5 + 0.5).clamp(0, 1).detach()
 
-    images = images_tensor[:grid_size * grid_size].permute(
-        0, 2, 3, 1).detach().cpu().numpy().astype("uint8")
-    grid = images.reshape(grid_size, grid_size, height, width, 3)
-    grid = np.swapaxes(grid, 1, 2).reshape(
-        grid_size * height, grid_size * width, 3)
-    return grid
+    if tensor.ndim == 4:
+        # Assuming it's an image and has shape [batch_size, 3, height, width]
+        tensor = make_grid(tensor, 4, padding=0, normalize=False)
+        return wandb.Image((tensor * 255).cpu().numpy().astype(np.uint8), caption=caption)
+    elif tensor.ndim == 5:
+        # Assuming it's a video and has shape [batch_size, num_frames, 3, height, width]
+        return wandb.Video((tensor * 255).cpu().numpy().astype(np.uint8), fps=fps, format="webm", caption=caption)
+    else:
+        raise ValueError("Unsupported tensor shape for saving. Expected 4D (image) or 5D (video) tensor.")

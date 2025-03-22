@@ -3,7 +3,7 @@ from causvid.models import get_block_class
 from causvid.data import TextDataset
 from causvid.util import (
     launch_distributed_job,
-    prepare_images_for_saving,
+    prepare_for_saving,
     set_seed, init_logging_folder,
     fsdp_wrap, cycle,
     fsdp_state_dict,
@@ -194,6 +194,8 @@ class Trainer:
             generator_grad_norm = self.distillation_model.generator.clip_grad_norm_(
                 self.max_grad_norm)
             self.generator_optimizer.step()
+        else:
+            generator_log_dict = {}
 
         # Step 4: Train the critic
         critic_loss, critic_log_dict = self.distillation_model.critic_loss(
@@ -226,40 +228,40 @@ class Trainer:
                 )
 
             if VISUALIZE:
-                critictrain_latent, critictrain_noisy_latent, critictrain_pred_image = map(
-                    lambda x: self.distillation_model.vae.decode_to_pixel(
-                        x).squeeze(1),
-                    [critic_log_dict['critictrain_latent'], critic_log_dict['critictrain_noisy_latent'],
-                     critic_log_dict['critictrain_pred_image']]
-                )
-
-                visual_dict = {
-                    "critictrain_latent": prepare_images_for_saving(critictrain_latent, critictrain_latent.shape[-2], critictrain_latent.shape[-1]),
-                    "critictrain_noisy_latent": prepare_images_for_saving(critictrain_noisy_latent, critictrain_noisy_latent.shape[-2], critictrain_noisy_latent.shape[-1]),
-                    "critictrain_pred_image": prepare_images_for_saving(critictrain_pred_image, critictrain_pred_image.shape[-2], critictrain_pred_image.shape[-1])
-                }
-
-                if TRAIN_GENERATOR:
-                    (dmdtrain_clean_latent, dmdtrain_noisy_latent, dmdtrain_pred_real_image, dmdtrain_pred_fake_image) = map(
-                        lambda x: self.distillation_model.vae.decode_to_pixel(
-                            x).squeeze(1),
-                        [generator_log_dict['dmdtrain_clean_latent'], generator_log_dict['dmdtrain_noisy_latent'],
-                         generator_log_dict['dmdtrain_pred_real_image'], generator_log_dict['dmdtrain_pred_fake_image']]
-                    )
-
-                    visual_dict.update(
-                        {
-                            "dmdtrain_clean_latent": prepare_images_for_saving(dmdtrain_clean_latent, dmdtrain_clean_latent.shape[-2], dmdtrain_clean_latent.shape[-1]),
-                            "dmdtrain_noisy_latent": prepare_images_for_saving(dmdtrain_noisy_latent, dmdtrain_noisy_latent.shape[-2], dmdtrain_noisy_latent.shape[-1]),
-                            "dmdtrain_pred_real_image": prepare_images_for_saving(dmdtrain_pred_real_image, dmdtrain_pred_real_image.shape[-2], dmdtrain_pred_real_image.shape[-1]),
-                            "dmdtrain_pred_fake_image": prepare_images_for_saving(dmdtrain_pred_fake_image, dmdtrain_pred_fake_image.shape[-2], dmdtrain_pred_fake_image.shape[-1])
-                        }
-                    )
-
-                for k, v in visual_dict.items():
-                    wandb_loss_dict[k] = wandb.Image(v)
+                self.add_visualization(generator_log_dict, critic_log_dict, wandb_loss_dict)
 
             wandb.log(wandb_loss_dict, step=self.step)
+
+    def add_visualization(self, generator_log_dict, critic_log_dict, wandb_loss_dict):
+        critictrain_latent, critictrain_noisy_latent, critictrain_pred_image = map(
+            lambda x: self.distillation_model.vae.decode_to_pixel(
+                x).squeeze(1),
+            [critic_log_dict['critictrain_latent'], critic_log_dict['critictrain_noisy_latent'],
+                critic_log_dict['critictrain_pred_image']]
+        )
+
+        wandb_loss_dict.update({
+            "critictrain_latent": prepare_for_saving(critictrain_latent),
+            "critictrain_noisy_latent": prepare_for_saving(critictrain_noisy_latent),
+            "critictrain_pred_image": prepare_for_saving(critictrain_pred_image)
+        })
+
+        if "dmdtrain_clean_latent" in generator_log_dict:
+            (dmdtrain_clean_latent, dmdtrain_noisy_latent, dmdtrain_pred_real_image, dmdtrain_pred_fake_image) = map(
+                lambda x: self.distillation_model.vae.decode_to_pixel(
+                    x).squeeze(1),
+                [generator_log_dict['dmdtrain_clean_latent'], generator_log_dict['dmdtrain_noisy_latent'],
+                    generator_log_dict['dmdtrain_pred_real_image'], generator_log_dict['dmdtrain_pred_fake_image']]
+            )
+
+            wandb_loss_dict.update(
+                {
+                    "dmdtrain_clean_latent": prepare_for_saving(dmdtrain_clean_latent),
+                    "dmdtrain_noisy_latent": prepare_for_saving(dmdtrain_noisy_latent),
+                    "dmdtrain_pred_real_image": prepare_for_saving(dmdtrain_pred_real_image),
+                    "dmdtrain_pred_fake_image": prepare_for_saving(dmdtrain_pred_fake_image)
+                }
+            )
 
     def train(self):
         while True:
