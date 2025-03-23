@@ -21,7 +21,8 @@ Current video diffusion models achieve impressive generation quality but struggl
 
 ```bash
 conda create -n causvid python=3.10 -y
-conda activate causvid 
+conda activate causvid
+pip install torch torchvision  # install torch first
 pip install -r requirements.txt 
 python setup.py develop
 ```
