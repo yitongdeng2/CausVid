@@ -75,13 +75,15 @@ python causvid/ode_data/create_lmdb_iterative.py   --data_path XXX  --lmdb_path 
 
 ## Training 
 
+Please first modify the wandb account information in the respective config.  
+
 Bidirectional DMD Training
 
 ```bash
 torchrun --nnodes 8 --nproc_per_node=8 --rdzv_id=5235 \
     --rdzv_backend=c10d \
     --rdzv_endpoint $MASTER_ADDR causvid/train_distillation.py \
-    --config_path  configs/wan_bidirectional_dmd_from_scratch.yaml  --no_visualize
+    --config_path  configs/wan_bidirectional_dmd_from_scratch.yaml 
 ```
 
 ODE Dataset Generation. We generate a total of 1.5K dataset pairs, which can also be downloaded from [here](https://huggingface.co/tianweiy/CausVid/tree/main/mixkit_ode_lmdb) 
