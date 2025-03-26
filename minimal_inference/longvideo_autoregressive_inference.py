@@ -14,6 +14,7 @@ parser.add_argument("--checkpoint_folder", type=str)
 parser.add_argument("--prompt_file_path", type=str)
 parser.add_argument("--output_folder", type=str)
 parser.add_argument("--num_rollout", type=int, default=3)
+parser.add_argument("--num_overlap_frames", type=int, default=3)
 
 args = parser.parse_args()
 
@@ -23,6 +24,7 @@ config = OmegaConf.load(args.config_path)
 
 pipeline = InferencePipeline(config, device="cuda")
 pipeline.to(device="cuda", dtype=torch.bfloat16)
+assert args.num_overlap_frames % pipeline.num_frame_per_block == 0, "num_overlap_frames must be divisible by num_frame_per_block"
 
 state_dict = torch.load(os.path.join(args.checkpoint_folder, "model.pt"), map_location="cpu")[
     'generator']
@@ -70,14 +72,15 @@ for prompt_index in tqdm(range(len(dataset))):
 
         current_video = video[0].permute(0, 2, 3, 1).cpu().numpy()
 
-        start_frame = encode(pipeline.vae, (video[:, -9:-8, :] * 2.0 - 1.0).transpose(2, 1).to(
-            torch.bfloat16)).transpose(2, 1).to(torch.bfloat16)
+        start_frame = encode(pipeline.vae, (
+            video[:, -4 * (args.num_overlap_frames - 1) - 1:-4 * (args.num_overlap_frames - 1), :] * 2.0 - 1.0
+        ).transpose(2, 1).to(torch.bfloat16)).transpose(2, 1).to(torch.bfloat16)
 
         start_latents = torch.cat(
-            [start_frame, latents[:, -2:]], dim=1
+            [start_frame, latents[:, -(args.num_overlap_frames - 1):]], dim=1
         )
 
-        all_video.append(current_video[:-9])
+        all_video.append(current_video[:-(4 * (args.num_overlap_frames - 1) + 1)])
 
     video = np.concatenate(all_video, axis=0)
 
