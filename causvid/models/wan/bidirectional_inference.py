@@ -24,6 +24,9 @@ class BidirectionalInferencePipeline(torch.nn.Module):
             args.denoising_step_list, dtype=torch.long, device=device)
 
         self.scheduler = self.generator.get_scheduler()
+        if args.warp_denoising_step:  # Warp the denoising step according to the scheduler time shift
+            timesteps = torch.cat((self.scheduler.timesteps.cpu(), torch.tensor([0], dtype=torch.float32))).cuda()
+            self.denoising_step_list = timesteps[1000 - self.denoising_step_list]
 
     def inference(self, noise: torch.Tensor, text_prompts: List[str]) -> torch.Tensor:
         """
