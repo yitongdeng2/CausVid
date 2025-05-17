@@ -45,3 +45,4 @@ image_or_video_shape:
 output_path: /mnt/localssd/wan_bidirectional_dmd
 distillation_loss: dmd
 gradient_checkpointing: true
+warp_denoising_step: false
