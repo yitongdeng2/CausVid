@@ -123,6 +123,12 @@ torchrun --nnodes 8 --nproc_per_node=8 --rdzv_id=5235 \
 - DMD training likely requires larger, higher-quality datasets.
 - Timestep shift, guidance scale, or denoising steps may need fine-tuning.
 
+## Relevant Projects
+
+* [FastVideo](https://github.com/hao-ai-lab/FastVideo)
+* [Self-Forcing](https://github.com/guandeh17/Self-Forcing)
+
+
 ## Citation 
 
 If you find CausVid useful or relevant to your research, please kindly cite our papers:
