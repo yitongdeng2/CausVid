@@ -1,3 +1,6 @@
+wan_models/
+checkpoints/
+
 # Byte-compiled / optimized / DLL files
 model/
 __pycache__/
