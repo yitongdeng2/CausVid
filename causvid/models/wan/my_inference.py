@@ -112,6 +112,11 @@ class MyInferencePipeline(torch.nn.Module):
 
         num_input_blocks = start_latents.shape[1] // self.num_frame_per_block if start_latents is not None else 0
 
+        # SET VACE CONTEXT
+        vace_context = None
+        vace_context_scale = 0.5
+        # SET VACE CONTEXT
+
         # Step 2: Temporal denoising loop
         num_blocks = num_frames // self.num_frame_per_block
         for block_index in range(num_blocks):
@@ -131,6 +136,7 @@ class MyInferencePipeline(torch.nn.Module):
                     noisy_image_or_video=current_ref_latents,
                     conditional_dict=conditional_dict,
                     timestep=timestep * 0,
+                    vace_context=vace_context, vace_context_scale=vace_context_scale,
                     kv_cache=self.kv_cache1,
                     crossattn_cache=self.crossattn_cache,
                     current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
@@ -150,6 +156,7 @@ class MyInferencePipeline(torch.nn.Module):
                         noisy_image_or_video=noisy_input,
                         conditional_dict=conditional_dict,
                         timestep=timestep,
+                        vace_context=vace_context, vace_context_scale=vace_context_scale,
                         kv_cache=self.kv_cache1,
                         crossattn_cache=self.crossattn_cache,
                         current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
@@ -170,6 +177,7 @@ class MyInferencePipeline(torch.nn.Module):
                         noisy_image_or_video=noisy_input,
                         conditional_dict=conditional_dict,
                         timestep=timestep,
+                        vace_context=vace_context, vace_context_scale=vace_context_scale,
                         kv_cache=self.kv_cache1,
                         crossattn_cache=self.crossattn_cache,
                         current_start=block_index * self.num_frame_per_block * self.frame_seq_length,
@@ -185,6 +193,7 @@ class MyInferencePipeline(torch.nn.Module):
                 noisy_image_or_video=denoised_pred,
                 conditional_dict=conditional_dict,
                 timestep=timestep * 0,
+                vace_context=vace_context, vace_context_scale=vace_context_scale,
                 kv_cache=self.kv_cache1,
                 crossattn_cache=self.crossattn_cache,
                 current_start=block_index * self.num_frame_per_block * self.frame_seq_length,

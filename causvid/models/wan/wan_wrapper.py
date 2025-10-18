@@ -223,3 +223,48 @@ class VaceCausalWanDiffusionWrapper(WanDiffusionWrapper):
         self.model.eval()
 
         self.uniform_timestep = False
+
+    def forward(
+        self, 
+        noisy_image_or_video: torch.Tensor, conditional_dict: dict,
+        timestep: torch.Tensor, 
+        vace_context, vace_context_scale, #New
+        kv_cache: Optional[List[dict]] = None,
+        crossattn_cache: Optional[List[dict]] = None,
+        current_start: Optional[int] = None,
+        current_end: Optional[int] = None
+    ) -> torch.Tensor:
+        prompt_embeds = conditional_dict["prompt_embeds"]
+
+        # [B, F] -> [B]
+        if self.uniform_timestep:
+            input_timestep = timestep[:, 0]
+        else:
+            input_timestep = timestep
+
+        if kv_cache is not None:
+            flow_pred = self.model(
+                noisy_image_or_video.permute(0, 2, 1, 3, 4),
+                t=input_timestep, context=prompt_embeds,
+                vace_context=vace_context, vace_context_scale=vace_context_scale,
+                seq_len=self.seq_len,
+                kv_cache=kv_cache,
+                crossattn_cache=crossattn_cache,
+                current_start=current_start,
+                current_end=current_end
+            ).permute(0, 2, 1, 3, 4)
+        else:
+            flow_pred = self.model(
+                noisy_image_or_video.permute(0, 2, 1, 3, 4),
+                t=input_timestep, context=prompt_embeds,
+                vace_context=vace_context, vace_context_scale=vace_context_scale,
+                seq_len=self.seq_len
+            ).permute(0, 2, 1, 3, 4)
+
+        pred_x0 = self._convert_flow_pred_to_x0(
+            flow_pred=flow_pred.flatten(0, 1),
+            xt=noisy_image_or_video.flatten(0, 1),
+            timestep=timestep.flatten(0, 1)
+        ).unflatten(0, flow_pred.shape[:2])
+
+        return pred_x0

@@ -3,6 +3,7 @@ from causvid.models.wan.causal_model import CausalWanAttentionBlock, CausalWanMo
 import torch.nn as nn
 from causvid.models.wan.wan_base.modules.model import sinusoidal_embedding_1d
 import torch
+from VACE_essentials.vace_wan_model import VaceWanAttentionBlock
 
 class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
     def __init__(self,
@@ -57,8 +58,8 @@ class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
 class VaceCausalWanModel(CausalWanModel):
     @register_to_config
     def __init__(self,
-                vace_layers=None,
-                vace_in_dim=None,
+                vace_layers=None, # NEW
+                vace_in_dim=None, # NEW
                 model_type='t2v',
                 patch_size=(1, 2, 2),
                 text_len=512,
@@ -107,30 +108,53 @@ class VaceCausalWanModel(CausalWanModel):
             for i in range(self.num_layers)
         ])
 
-        # # vace blocks
-        # self.vace_blocks = nn.ModuleList([
-        #     VaceWanAttentionBlock('t2v_cross_attn', self.dim, self.ffn_dim, self.num_heads, self.window_size, self.qk_norm,
-        #                              self.cross_attn_norm, self.eps, block_id=i)
-        #     for i in self.vace_layers
-        # ])
+        # vace blocks
+        assert cross_attn_type == 't2v_cross_attn' # IT SEEMS LIKE VACE ONLY SUPPORTS T2V 
+        self.vace_blocks = nn.ModuleList([
+            VaceWanAttentionBlock('t2v_cross_attn', self.dim, self.ffn_dim, self.num_heads, self.window_size, self.qk_norm,
+                                     self.cross_attn_norm, self.eps, block_id=i)
+            for i in self.vace_layers
+        ])
 
-        # # vace patch embeddings
-        # self.vace_patch_embedding = nn.Conv3d(
-        #     self.vace_in_dim, self.dim, kernel_size=self.patch_size, stride=self.patch_size
-        # )
+        # vace patch embeddings
+        self.vace_patch_embedding = nn.Conv3d(
+            self.vace_in_dim, self.dim, kernel_size=self.patch_size, stride=self.patch_size
+        )
+
+    # based on https://github.com/ali-vilab/VACE/blob/main/vace/models/wan/modules/model.py
+    # needs: 1. self.vace_patch_embedding, 2. self.vace_blocks
+    def _forward_vace(self, x, vace_context, seq_len, kwargs):
+        # embeddings
+        c = [self.vace_patch_embedding(u.unsqueeze(0)) for u in vace_context]
+        c = [u.flatten(2).transpose(1, 2) for u in c]
+        c = torch.cat([
+            torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))],
+                      dim=1) for u in c
+        ])
+
+        # arguments
+        new_kwargs = dict(x=x)
+        new_kwargs.update(kwargs)
+
+        for block in self.vace_blocks:
+            c = block(c, **new_kwargs)
+        hints = torch.unbind(c)[:-1]
+        return hints
 
     def _forward_inference(
         self,
         x,
         t,
         context,
+        vace_context,
+        vace_context_scale,
         seq_len,
         clip_fea=None,
         y=None,
         kv_cache: dict = None,
         crossattn_cache: dict = None,
         current_start: int = 0,
-        current_end: int = 0
+        current_end: int = 0,
     ):
         r"""
         Run the diffusion model with kv caching.
@@ -213,6 +237,10 @@ class VaceCausalWanModel(CausalWanModel):
             block_mask=self.block_mask
         )
 
+        # DO VACE HERE
+        hints = self._forward_vace(x, vace_context, seq_len, kwargs)
+        # DO VACE HERE
+
         def create_custom_forward(module):
             def custom_forward(*inputs, **kwargs):
                 return module(*inputs, **kwargs)
@@ -230,7 +258,7 @@ class VaceCausalWanModel(CausalWanModel):
                         "current_end": current_end
                     }
                 )
-                x = block(x, hints=None, context_scale=None, **kwargs)
+                x = block(x, hints=hints, context_scale=vace_context_scale, **kwargs)
 
         # head
         x = self.head(x, e.unflatten(dim=0, sizes=t.shape).unsqueeze(2))
