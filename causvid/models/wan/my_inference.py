@@ -1,30 +1,76 @@
-# from causvid.models import (
-#     get_diffusion_wrapper,
-#     get_text_encoder_wrapper,
-#     get_vae_wrapper
-# )
-# from typing import List, Optional
-# import torch
-from causvid.models.wan.causal_inference import *
+from causvid.models import (
+    get_diffusion_wrapper,
+    get_text_encoder_wrapper,
+    get_vae_wrapper
+)
+from typing import List, Optional
+import torch
 
 
-class MyCustomInferencePipeline(torch.nn.Module):
-    def __init__(self, args, device, original_pipeline):
+class MyInferencePipeline(torch.nn.Module):
+    def __init__(self, generator, text_encoder, vae, args, dtype, device):
         super().__init__()
-        object.__setattr__(self, "_orig", original_pipeline)
+        # Step 1: Initialize all models
+        self.generator = generator.to(device=device, dtype=dtype)
+        self.text_encoder = text_encoder.to(device=device, dtype=dtype)
+        self.vae = vae.to(device=device, dtype=dtype)
 
-    def __getattr__(self, name):
-        # called only if normal lookup on the proxy fails
-        return getattr(self._orig, name)
+        # Step 2: Initialize all causal hyperparmeters
+        self.denoising_step_list = torch.tensor(
+            args.denoising_step_list, dtype=torch.long, device=device)
+        assert self.denoising_step_list[-1] == 0
+        # remove the last timestep (which equals zero)
+        self.denoising_step_list = self.denoising_step_list[:-1]
 
-    def __setattr__(self, name, value):
-        # write-through to original unless it's our private state
-        if name.startswith("_"):
-            object.__setattr__(self, name, value)
-        else:
-            setattr(self._orig, name, value)
-    
-    def custom_inference(self, noise: torch.Tensor, text_prompts: List[str], start_latents: Optional[torch.Tensor] = None, return_latents: bool = False) -> torch.Tensor:
+        self.scheduler = self.generator.get_scheduler()
+        if args.warp_denoising_step:  # Warp the denoising step according to the scheduler time shift
+            timesteps = torch.cat((self.scheduler.timesteps.cpu(), torch.tensor([0], dtype=torch.float32))).cuda()
+            self.denoising_step_list = timesteps[1000 - self.denoising_step_list]
+
+        self.num_transformer_blocks = 30
+        self.frame_seq_length = 1560
+
+        self.kv_cache1 = None
+        self.kv_cache2 = None
+        self.args = args
+        self.num_frame_per_block = getattr(
+            args, "num_frame_per_block", 1)
+
+        print(f"KV inference with {self.num_frame_per_block} frames per block")
+
+        if self.num_frame_per_block > 1:
+            self.generator.model.num_frame_per_block = self.num_frame_per_block
+
+    def _initialize_kv_cache(self, batch_size, dtype, device):
+        """
+        Initialize a Per-GPU KV cache for the Wan model.
+        """
+        kv_cache1 = []
+
+        for _ in range(self.num_transformer_blocks):
+            kv_cache1.append({
+                "k": torch.zeros([batch_size, 32760, 12, 128], dtype=dtype, device=device),
+                "v": torch.zeros([batch_size, 32760, 12, 128], dtype=dtype, device=device)
+            })
+
+        self.kv_cache1 = kv_cache1  # always store the clean cache
+
+    def _initialize_crossattn_cache(self, batch_size, dtype, device):
+        """
+        Initialize a Per-GPU cross-attention cache for the Wan model.
+        """
+        crossattn_cache = []
+
+        for _ in range(self.num_transformer_blocks):
+            crossattn_cache.append({
+                "k": torch.zeros([batch_size, 512, 12, 128], dtype=dtype, device=device),
+                "v": torch.zeros([batch_size, 512, 12, 128], dtype=dtype, device=device),
+                "is_init": False
+            })
+
+        self.crossattn_cache = crossattn_cache  # always store the clean cache
+
+    def inference(self, noise: torch.Tensor, text_prompts: List[str], start_latents: Optional[torch.Tensor] = None, return_latents: bool = False) -> torch.Tensor:
         """
         Perform inference on the given noise and text prompts.
         Inputs:
@@ -71,6 +117,7 @@ class MyCustomInferencePipeline(torch.nn.Module):
         for block_index in range(num_blocks):
             noisy_input = noise[:, block_index *
                                 self.num_frame_per_block:(block_index + 1) * self.num_frame_per_block]
+
             if start_latents is not None and block_index < num_input_blocks:
                 timestep = torch.ones(
                     [batch_size, self.num_frame_per_block], device=noise.device, dtype=torch.int64) * 0
