@@ -1,6 +1,8 @@
-from diffusers.configuration_utils import ConfigMixin, register_to_config
+from diffusers.configuration_utils import register_to_config
 from causvid.models.wan.causal_model import CausalWanAttentionBlock, CausalWanModel
 import torch.nn as nn
+from causvid.models.wan.wan_base.modules.model import sinusoidal_embedding_1d
+import torch
 
 class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
     def __init__(self,
@@ -47,8 +49,8 @@ class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
                             current_start,
                             current_end,
                             )
-        if self.block_id is not None:
-            x = x + hints[self.block_id] * context_scale
+        # if self.block_id is not None:
+        #     x = x + hints[self.block_id] * context_scale
         return x
 
     
@@ -116,4 +118,123 @@ class VaceCausalWanModel(CausalWanModel):
         # self.vace_patch_embedding = nn.Conv3d(
         #     self.vace_in_dim, self.dim, kernel_size=self.patch_size, stride=self.patch_size
         # )
-        
+
+    def _forward_inference(
+        self,
+        x,
+        t,
+        context,
+        seq_len,
+        clip_fea=None,
+        y=None,
+        kv_cache: dict = None,
+        crossattn_cache: dict = None,
+        current_start: int = 0,
+        current_end: int = 0
+    ):
+        r"""
+        Run the diffusion model with kv caching.
+        See Algorithm 2 of CausVid paper https://arxiv.org/abs/2412.07772 for details.
+        This function will be run for num_frame times.
+        Process the latent frames one by one (1560 tokens each)
+
+        Args:
+            x (List[Tensor]):
+                List of input video tensors, each with shape [C_in, F, H, W]
+            t (Tensor):
+                Diffusion timesteps tensor of shape [B]
+            context (List[Tensor]):
+                List of text embeddings each with shape [L, C]
+            seq_len (`int`):
+                Maximum sequence length for positional encoding
+            clip_fea (Tensor, *optional*):
+                CLIP image features for image-to-video mode
+            y (List[Tensor], *optional*):
+                Conditional video inputs for image-to-video mode, same shape as x
+
+        Returns:
+            List[Tensor]:
+                List of denoised video tensors with original input shapes [C_out, F, H / 8, W / 8]
+        """
+        if self.model_type == 'i2v':
+            assert clip_fea is not None and y is not None
+        # params
+        device = self.patch_embedding.weight.device
+        if self.freqs.device != device:
+            self.freqs = self.freqs.to(device)
+
+        if y is not None:
+            x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
+
+        # embeddings
+        x = [self.patch_embedding(u.unsqueeze(0)) for u in x]
+        grid_sizes = torch.stack(
+            [torch.tensor(u.shape[2:], dtype=torch.long) for u in x])
+        x = [u.flatten(2).transpose(1, 2) for u in x]
+        seq_lens = torch.tensor([u.size(1) for u in x], dtype=torch.long)
+        assert seq_lens.max() <= seq_len
+        x = torch.cat(x)
+        """
+        torch.cat([
+            torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))],
+                      dim=1) for u in x
+        ])
+        """
+
+        # time embeddings
+        # with amp.autocast(dtype=torch.float32):
+        e = self.time_embedding(
+            sinusoidal_embedding_1d(self.freq_dim, t.flatten()).type_as(x))
+        e0 = self.time_projection(e).unflatten(
+            1, (6, self.dim)).unflatten(dim=0, sizes=t.shape)
+        # assert e.dtype == torch.float32 and e0.dtype == torch.float32
+
+        # context
+        context_lens = None
+        context = self.text_embedding(
+            torch.stack([
+                torch.cat(
+                    [u, u.new_zeros(self.text_len - u.size(0), u.size(1))])
+                for u in context
+            ]))
+
+        if clip_fea is not None:
+            context_clip = self.img_emb(clip_fea)  # bs x 257 x dim
+            context = torch.concat([context_clip, context], dim=1)
+
+        # arguments
+        kwargs = dict(
+            e=e0,
+            seq_lens=seq_lens,
+            grid_sizes=grid_sizes,
+            freqs=self.freqs,
+            context=context,
+            context_lens=context_lens,
+            block_mask=self.block_mask
+        )
+
+        def create_custom_forward(module):
+            def custom_forward(*inputs, **kwargs):
+                return module(*inputs, **kwargs)
+            return custom_forward
+
+        for block_index, block in enumerate(self.blocks):
+            if torch.is_grad_enabled() and self.gradient_checkpointing:
+                assert False
+            else:
+                kwargs.update(
+                    {
+                        "kv_cache": kv_cache[block_index],
+                        "crossattn_cache": crossattn_cache[block_index],
+                        "current_start": current_start,
+                        "current_end": current_end
+                    }
+                )
+                x = block(x, hints=None, context_scale=None, **kwargs)
+
+        # head
+        x = self.head(x, e.unflatten(dim=0, sizes=t.shape).unsqueeze(2))
+
+        # unpatchify
+        x = self.unpatchify(x, grid_sizes)
+        return torch.stack(x)
