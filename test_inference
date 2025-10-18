@@ -141,39 +141,62 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 9,
+   "execution_count": 13,
    "id": "78f9fd0e-990d-4924-9a7f-a762ab7da441",
    "metadata": {},
    "outputs": [
     {
-     "ename": "ModuleNotFoundError",
-     "evalue": "No module named 'my_custom_inference'",
-     "output_type": "error",
-     "traceback": [
-      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
-      "\u001b[0;31mModuleNotFoundError\u001b[0m                       Traceback (most recent call last)",
-      "Cell \u001b[0;32mIn[9], line 4\u001b[0m\n\u001b[1;32m      2\u001b[0m \u001b[38;5;28;01mimport\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;21;01mcausvid\u001b[39;00m\u001b[38;5;21;01m.\u001b[39;00m\u001b[38;5;21;01mmodels\u001b[39;00m\u001b[38;5;21;01m.\u001b[39;00m\u001b[38;5;21;01mwan\u001b[39;00m\u001b[38;5;21;01m.\u001b[39;00m\u001b[38;5;21;01mmy_custom_inference\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;28;01mas\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;21;01mmy_custom_inference\u001b[39;00m\n\u001b[1;32m      3\u001b[0m importlib\u001b[38;5;241m.\u001b[39mreload(my_custom_inference)\n\u001b[0;32m----> 4\u001b[0m \u001b[38;5;28;01mfrom\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;21;01mmy_custom_inference\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;28;01mimport\u001b[39;00m MyCustomInferencePipeline\n\u001b[1;32m      6\u001b[0m custom_pipeline \u001b[38;5;241m=\u001b[39m MyCustomInferencePipeline(config, device\u001b[38;5;241m=\u001b[39m\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mcuda\u001b[39m\u001b[38;5;124m\"\u001b[39m, original_pipeline\u001b[38;5;241m=\u001b[39mpipeline)\n\u001b[1;32m      7\u001b[0m \u001b[38;5;28;01mfor\u001b[39;00m prompt_index \u001b[38;5;129;01min\u001b[39;00m tqdm(\u001b[38;5;28mrange\u001b[39m(\u001b[38;5;28mlen\u001b[39m(dataset))):\n",
-      "\u001b[0;31mModuleNotFoundError\u001b[0m: No module named 'my_custom_inference'"
+     "data": {
+      "application/vnd.jupyter.widget-view+json": {
+       "model_id": "77f9331052864d2b8964fd2d87aba9cd",
+       "version_major": 2,
+       "version_minor": 0
+      },
+      "text/plain": [
+       "  0%|          | 0/2 [00:00<?, ?it/s]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n",
+      "sayonara\n"
      ]
     }
    ],
    "source": [
     "import importlib\n",
-    "import causvid.models.wan.my_custom_inference as my_custom_inference\n",
-    "importlib.reload(my_custom_inference)\n",
-    "# from my_custom_inference import MyCustomInferencePipeline\n",
+    "import causvid.models.wan.my_custom_inference\n",
+    "importlib.reload(causvid.models.wan.my_custom_inference)\n",
+    "from causvid.models.wan.my_custom_inference import MyCustomInferencePipeline\n",
     "\n",
-    "# custom_pipeline = MyCustomInferencePipeline(config, device=\"cuda\", original_pipeline=pipeline)\n",
-    "# for prompt_index in tqdm(range(len(dataset))):\n",
-    "#     prompts = [dataset[prompt_index]]\n",
+    "custom_pipeline = MyCustomInferencePipeline(config, device=\"cuda\", original_pipeline=pipeline)\n",
+    "for prompt_index in tqdm(range(len(dataset))):\n",
+    "    prompts = [dataset[prompt_index]]\n",
     "\n",
-    "#     video = custom_pipeline.custom_inference(\n",
-    "#         noise=sampled_noise,\n",
-    "#         text_prompts=prompts\n",
-    "#     )[0].permute(0, 2, 3, 1).cpu().numpy()\n",
+    "    video = custom_pipeline.custom_inference(\n",
+    "        noise=sampled_noise,\n",
+    "        text_prompts=prompts\n",
+    "    )[0].permute(0, 2, 3, 1).cpu().numpy()\n",
     "\n",
-    "#     export_to_video(\n",
-    "#         video, os.path.join(args.output_folder, f\"custom_output_{prompt_index:03d}.mp4\"), fps=16)"
+    "    export_to_video(\n",
+    "        video, os.path.join(args.output_folder, f\"custom_output_{prompt_index:03d}.mp4\"), fps=16)"
    ]
   },
   {

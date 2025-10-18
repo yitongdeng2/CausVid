@@ -71,7 +71,6 @@ class MyCustomInferencePipeline(torch.nn.Module):
         for block_index in range(num_blocks):
             noisy_input = noise[:, block_index *
                                 self.num_frame_per_block:(block_index + 1) * self.num_frame_per_block]
-            print("sayonara")
             if start_latents is not None and block_index < num_input_blocks:
                 timestep = torch.ones(
                     [batch_size, self.num_frame_per_block], device=noise.device, dtype=torch.int64) * 0
