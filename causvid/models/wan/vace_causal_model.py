@@ -1,4 +1,5 @@
-from causvid.models.wan.vace_causal_model import CausalWanAttentionBlock, CausalWanModel
+from diffusers.configuration_utils import ConfigMixin, register_to_config
+from causvid.models.wan.causal_model import CausalWanAttentionBlock, CausalWanModel
 import torch.nn as nn
 
 class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
