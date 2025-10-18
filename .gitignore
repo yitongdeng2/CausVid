@@ -1,5 +1,6 @@
 logs/
 wan_models/
+wan_vace_models/
 checkpoints/
 
 # Byte-compiled / optimized / DLL files
