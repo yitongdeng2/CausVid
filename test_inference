@@ -1,0 +1,134 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "57429b6c-35a6-42b2-8c78-004869003e5c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from causvid.models.wan.causal_inference import InferencePipeline\n",
+    "from diffusers.utils import export_to_video\n",
+    "from causvid.data import TextDataset\n",
+    "from omegaconf import OmegaConf\n",
+    "from tqdm import tqdm\n",
+    "import argparse\n",
+    "import torch\n",
+    "import os\n",
+    "\n",
+    "exp_name = \"first_test\"\n",
+    "logs_dir = os.path.join(\"logs\", exp_name)\n",
+    "os.makedirs(logs_dir, exist_ok=True)\n",
+    "\n",
+    "class Args(argparse.Namespace):\n",
+    "  config_path = \"configs/wan_causal_dmd.yaml\"\n",
+    "  checkpoint_folder = os.path.join(\"checkpoints\", \"autoregressive_checkpoint\")\n",
+    "  output_folder = logs_dir \n",
+    "  prompt_file_path = os.path.join(\"prompt_files\", \"prompt1.txt\")\n",
+    "args = Args()\n",
+    "\n",
+    "torch.set_grad_enabled(False)\n",
+    "\n",
+    "config = OmegaConf.load(args.config_path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "c6f70ca2-d771-4b40-b928-5d77064596cf",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "KV inference with 3 frames per block\n"
+     ]
+    }
+   ],
+   "source": [
+    "pipeline = InferencePipeline(config, device=\"cuda\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "a6dd3b4f-0750-4fd0-b1f1-0bbd46426fd7",
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "FileNotFoundError",
+     "evalue": "[Errno 2] No such file or directory: 'checkpoints/model.pt'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mFileNotFoundError\u001b[0m                         Traceback (most recent call last)",
+      "Cell \u001b[0;32mIn[12], line 3\u001b[0m\n\u001b[1;32m      1\u001b[0m pipeline\u001b[38;5;241m.\u001b[39mto(device\u001b[38;5;241m=\u001b[39m\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mcuda\u001b[39m\u001b[38;5;124m\"\u001b[39m, dtype\u001b[38;5;241m=\u001b[39mtorch\u001b[38;5;241m.\u001b[39mbfloat16)\n\u001b[0;32m----> 3\u001b[0m state_dict \u001b[38;5;241m=\u001b[39m \u001b[43mtorch\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mload\u001b[49m\u001b[43m(\u001b[49m\u001b[43mos\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mpath\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mjoin\u001b[49m\u001b[43m(\u001b[49m\u001b[43margs\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mcheckpoint_folder\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[38;5;124;43mmodel.pt\u001b[39;49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mmap_location\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[38;5;124;43mcpu\u001b[39;49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[43m)\u001b[49m[\n\u001b[1;32m      4\u001b[0m     \u001b[38;5;124m'\u001b[39m\u001b[38;5;124mgenerator\u001b[39m\u001b[38;5;124m'\u001b[39m]\n\u001b[1;32m      6\u001b[0m pipeline\u001b[38;5;241m.\u001b[39mgenerator\u001b[38;5;241m.\u001b[39mload_state_dict(\n\u001b[1;32m      7\u001b[0m     state_dict, strict\u001b[38;5;241m=\u001b[39m\u001b[38;5;28;01mTrue\u001b[39;00m\n\u001b[1;32m      8\u001b[0m )\n\u001b[1;32m     10\u001b[0m dataset \u001b[38;5;241m=\u001b[39m TextDataset(args\u001b[38;5;241m.\u001b[39mprompt_file_path)\n",
+      "File \u001b[0;32m~/miniconda3/envs/causvid/lib/python3.10/site-packages/torch/serialization.py:1484\u001b[0m, in \u001b[0;36mload\u001b[0;34m(f, map_location, pickle_module, weights_only, mmap, **pickle_load_args)\u001b[0m\n\u001b[1;32m   1481\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mencoding\u001b[39m\u001b[38;5;124m\"\u001b[39m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;129;01min\u001b[39;00m pickle_load_args\u001b[38;5;241m.\u001b[39mkeys():\n\u001b[1;32m   1482\u001b[0m     pickle_load_args[\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mencoding\u001b[39m\u001b[38;5;124m\"\u001b[39m] \u001b[38;5;241m=\u001b[39m \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mutf-8\u001b[39m\u001b[38;5;124m\"\u001b[39m\n\u001b[0;32m-> 1484\u001b[0m \u001b[38;5;28;01mwith\u001b[39;00m \u001b[43m_open_file_like\u001b[49m\u001b[43m(\u001b[49m\u001b[43mf\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[38;5;124;43mrb\u001b[39;49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[43m)\u001b[49m \u001b[38;5;28;01mas\u001b[39;00m opened_file:\n\u001b[1;32m   1485\u001b[0m     \u001b[38;5;28;01mif\u001b[39;00m _is_zipfile(opened_file):\n\u001b[1;32m   1486\u001b[0m         \u001b[38;5;66;03m# The zipfile reader is going to advance the current file position.\u001b[39;00m\n\u001b[1;32m   1487\u001b[0m         \u001b[38;5;66;03m# If we want to actually tail call to torch.jit.load, we need to\u001b[39;00m\n\u001b[1;32m   1488\u001b[0m         \u001b[38;5;66;03m# reset back to the original position.\u001b[39;00m\n\u001b[1;32m   1489\u001b[0m         orig_position \u001b[38;5;241m=\u001b[39m opened_file\u001b[38;5;241m.\u001b[39mtell()\n",
+      "File \u001b[0;32m~/miniconda3/envs/causvid/lib/python3.10/site-packages/torch/serialization.py:759\u001b[0m, in \u001b[0;36m_open_file_like\u001b[0;34m(name_or_buffer, mode)\u001b[0m\n\u001b[1;32m    757\u001b[0m \u001b[38;5;28;01mdef\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;21m_open_file_like\u001b[39m(name_or_buffer: FileLike, mode: \u001b[38;5;28mstr\u001b[39m) \u001b[38;5;241m-\u001b[39m\u001b[38;5;241m>\u001b[39m _opener[IO[\u001b[38;5;28mbytes\u001b[39m]]:\n\u001b[1;32m    758\u001b[0m     \u001b[38;5;28;01mif\u001b[39;00m _is_path(name_or_buffer):\n\u001b[0;32m--> 759\u001b[0m         \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[43m_open_file\u001b[49m\u001b[43m(\u001b[49m\u001b[43mname_or_buffer\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mmode\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    760\u001b[0m     \u001b[38;5;28;01melse\u001b[39;00m:\n\u001b[1;32m    761\u001b[0m         \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mw\u001b[39m\u001b[38;5;124m\"\u001b[39m \u001b[38;5;129;01min\u001b[39;00m mode:\n",
+      "File \u001b[0;32m~/miniconda3/envs/causvid/lib/python3.10/site-packages/torch/serialization.py:740\u001b[0m, in \u001b[0;36m_open_file.__init__\u001b[0;34m(self, name, mode)\u001b[0m\n\u001b[1;32m    739\u001b[0m \u001b[38;5;28;01mdef\u001b[39;00m\u001b[38;5;250m \u001b[39m\u001b[38;5;21m__init__\u001b[39m(\u001b[38;5;28mself\u001b[39m, name: Union[\u001b[38;5;28mstr\u001b[39m, os\u001b[38;5;241m.\u001b[39mPathLike[\u001b[38;5;28mstr\u001b[39m]], mode: \u001b[38;5;28mstr\u001b[39m) \u001b[38;5;241m-\u001b[39m\u001b[38;5;241m>\u001b[39m \u001b[38;5;28;01mNone\u001b[39;00m:\n\u001b[0;32m--> 740\u001b[0m     \u001b[38;5;28msuper\u001b[39m()\u001b[38;5;241m.\u001b[39m\u001b[38;5;21m__init__\u001b[39m(\u001b[38;5;28;43mopen\u001b[39;49m\u001b[43m(\u001b[49m\u001b[43mname\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mmode\u001b[49m\u001b[43m)\u001b[49m)\n",
+      "\u001b[0;31mFileNotFoundError\u001b[0m: [Errno 2] No such file or directory: 'checkpoints/model.pt'"
+     ]
+    }
+   ],
+   "source": [
+    "pipeline.to(device=\"cuda\", dtype=torch.bfloat16)\n",
+    "\n",
+    "state_dict = torch.load(os.path.join(args.checkpoint_folder, \"model.pt\"), map_location=\"cpu\")[\n",
+    "    'generator']\n",
+    "\n",
+    "pipeline.generator.load_state_dict(\n",
+    "    state_dict, strict=True\n",
+    ")\n",
+    "\n",
+    "dataset = TextDataset(args.prompt_file_path)\n",
+    "\n",
+    "sampled_noise = torch.randn(\n",
+    "    [1, 21, 16, 60, 104], device=\"cuda\", dtype=torch.bfloat16\n",
+    ")\n",
+    "\n",
+    "os.makedirs(args.output_folder, exist_ok=True)\n",
+    "\n",
+    "for prompt_index in tqdm(range(len(dataset))):\n",
+    "    prompts = [dataset[prompt_index]]\n",
+    "\n",
+    "    video = pipeline.inference(\n",
+    "        noise=sampled_noise,\n",
+    "        text_prompts=prompts\n",
+    "    )[0].permute(0, 2, 3, 1).cpu().numpy()\n",
+    "\n",
+    "    export_to_video(\n",
+    "        video, os.path.join(args.output_folder, f\"output_{prompt_index:03d}.mp4\"), fps=16)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1832419a-ba44-41c5-9d77-44818fe49fbd",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.18"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
