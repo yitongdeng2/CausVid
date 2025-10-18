@@ -12,6 +12,8 @@ from causvid.models.wan.causal_model import CausalWanModel
 from typing import List, Tuple, Dict, Optional
 import torch
 
+from causvid.models.wan.vace_causal_model import VaceCausalWanModel # NEW
+
 
 class WanTextEncoder(TextEncoderInterface):
     def __init__(self) -> None:
@@ -207,6 +209,16 @@ class CausalWanDiffusionWrapper(WanDiffusionWrapper):
         super().__init__()
 
         self.model = CausalWanModel.from_pretrained(
+            "wan_models/Wan2.1-T2V-1.3B/")
+        self.model.eval()
+
+        self.uniform_timestep = False
+
+class VaceCausalWanDiffusionWrapper(WanDiffusionWrapper):
+    def __init__(self):
+        super().__init__()
+
+        self.model = VaceCausalWanModel.from_pretrained(
             "wan_models/Wan2.1-T2V-1.3B/")
         self.model.eval()
 
