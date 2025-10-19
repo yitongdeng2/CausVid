@@ -95,7 +95,7 @@ class VaceCausalWanModel(CausalWanModel):
     @register_to_config
     def __init__(self,
                 vace_layers=None, # NEW
-                vace_in_dim=None, # NEW
+                vace_in_dim=96, # NEW
                 model_type='t2v',
                 patch_size=(1, 2, 2),
                 text_len=512,
@@ -156,6 +156,10 @@ class VaceCausalWanModel(CausalWanModel):
         self.vace_patch_embedding = nn.Conv3d(
             self.vace_in_dim, self.dim, kernel_size=self.patch_size, stride=self.patch_size
         )
+        print("in dim? ", self.vace_in_dim)
+        print("patch size?", self.patch_size)
+        print("patch size? ", self.patch_size)
+        print(self.vace_patch_embedding.state_dict())
 
     # based on https://github.com/ali-vilab/VACE/blob/main/vace/models/wan/modules/model.py
     # needs: 1. self.vace_patch_embedding, 2. self.vace_blocks

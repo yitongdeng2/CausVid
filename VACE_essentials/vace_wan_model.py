@@ -121,6 +121,10 @@ class VaceWanModel(WanModel):
         self.vace_patch_embedding = nn.Conv3d(
             self.vace_in_dim, self.dim, kernel_size=self.patch_size, stride=self.patch_size
         )
+        print("vace in dim? ", self.vace_in_dim)
+        print("patch size?", self.patch_size)
+        print("patch size? ", self.patch_size)
+        print(self.vace_patch_embedding.state_dict())
 
     def forward_vace(
         self,
