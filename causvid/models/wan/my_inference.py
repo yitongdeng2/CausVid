@@ -202,10 +202,10 @@ class MyInferencePipeline(torch.nn.Module):
 
         # SET VACE CONTEXT
         # this vae might be different from the VAE wrapper, or maybe not, not 100% sure
-        z = torch.load("/home/yitong-moonlake/CausVid/prompt_files/extracted_vace_context.pt")
+        z = torch.load("/home/yitong-moonlake/CausVid/prompt_files/extracted_vace_context.pt") # HARD READ
         z = [item.to(device=self.device, dtype=self.dtype) for item in z]
         vace_context = z
-        vace_context_scale = 0.0
+        vace_context_scale = 1.0
         # SET VACE CONTEXT
 
         # Step 2: Temporal denoising loop

@@ -166,7 +166,7 @@ class VaceCausalWanModel(CausalWanModel):
 
     # based on https://github.com/ali-vilab/VACE/blob/main/vace/models/wan/modules/model.py
     # needs: 1. self.vace_patch_embedding, 2. self.vace_blocks
-    def _forward_vace(self, x, vace_context, seq_len, kwargs):
+    def _forward_vace(self, x, vace_context, current_start, current_end, kwargs):
         for item in vace_context:
             print("item in vace_context: ", item.shape) # each is 96, 21, 60, 104
         print("x.shape: ", x.shape) # 1, 4680, 1536 = 1, 3 frames * 60 * 104, hidden dimension = 1536
@@ -177,10 +177,17 @@ class VaceCausalWanModel(CausalWanModel):
         c = [u.flatten(2).transpose(1, 2) for u in c] # each is 1, 32760, 1536
         for u in c:
             print("u shape after reshaping: ", u.shape) # each is 1, 32760, 1536
+
+        # do this 
+        c = torch.cat(c)[:, current_start:current_end] # 1, 4680, 1536
+
+        ''' don't do the following
         c = torch.cat([
             torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))],
                       dim=1) for u in c
         ])
+        '''
+
         print("c shape: ", c.shape) # 1, 32760, 1536
 
         # arguments
@@ -263,6 +270,10 @@ class VaceCausalWanModel(CausalWanModel):
         e0 = self.time_projection(e).unflatten(
             1, (6, self.dim)).unflatten(dim=0, sizes=t.shape)
         # assert e.dtype == torch.float32 and e0.dtype == torch.float32
+        print("t: ", t) # [1000, 1000, 1000]
+        assert t[0][0] == t[0][1] == t[0][2] # THAT'S WHAT I'M ASSUMING
+        print("e.shape: ", e.shape) # e.shape:  torch.Size([3, 1536])
+        print("e0.shape: ", e0.shape) #e0.shape:  torch.Size([1, 3, 6, 1536])
 
         # context
         context_lens = None
@@ -277,20 +288,24 @@ class VaceCausalWanModel(CausalWanModel):
             context_clip = self.img_emb(clip_fea)  # bs x 257 x dim
             context = torch.concat([context_clip, context], dim=1)
 
+        print("e0.shape: ", e0.shape)
         # arguments
         kwargs = dict(
-            e=e0,
+            e=e0[:, 0],
             seq_lens=seq_lens,
             grid_sizes=grid_sizes,
             freqs=self.freqs,
             context=context,
             context_lens=context_lens,
-            block_mask=self.block_mask
         )
+        print("seq_lens: ", seq_lens)
+        # DO VACE HERE
+        print("current_start: ", current_start)
+        hints = self._forward_vace(x, vace_context, current_start, current_end, kwargs)
+        print("current_end: ", current_end)
+        # DO VACE HERE
 
-        # DO VACE HERE
-        hints = self._forward_vace(x, vace_context, seq_len, kwargs)
-        # DO VACE HERE
+        kwargs.update({"block_mask": self.block_mask, "e": e0})
 
         def create_custom_forward(module):
             def custom_forward(*inputs, **kwargs):
