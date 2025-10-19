@@ -28,8 +28,11 @@ class VaceWanAttentionBlock(WanAttentionBlock):
         nn.init.zeros_(self.after_proj.bias)
 
     def forward(self, c, x, **kwargs):
-        print("Hello???")
         if self.block_id == 0:
+            print("self.before_proj: ", self.before_proj)
+            print("c shape: ", c.shape)
+            print("self.before_proj(c) shape: ", self.before_proj(c).shape)
+            print("x.shape: ", x.shape)
             c = self.before_proj(c) + x
             all_c = []
         else:
@@ -86,8 +89,8 @@ class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
                             current_start,
                             current_end,
                             )
-        # if self.block_id is not None:
-        #     x = x + hints[self.block_id] * context_scale
+        if self.block_id is not None:
+            x = x + hints[self.block_id] * context_scale
         return x
 
     
@@ -164,13 +167,21 @@ class VaceCausalWanModel(CausalWanModel):
     # based on https://github.com/ali-vilab/VACE/blob/main/vace/models/wan/modules/model.py
     # needs: 1. self.vace_patch_embedding, 2. self.vace_blocks
     def _forward_vace(self, x, vace_context, seq_len, kwargs):
+        for item in vace_context:
+            print("item in vace_context: ", item.shape) # each is 96, 21, 60, 104
+        print("x.shape: ", x.shape) # 1, 4680, 1536 = 1, 3 frames * 60 * 104, hidden dimension = 1536
         # embeddings
         c = [self.vace_patch_embedding(u.unsqueeze(0)) for u in vace_context]
-        c = [u.flatten(2).transpose(1, 2) for u in c]
+        for u in c:
+            print("u shape after vace patch embedding: ", u.shape) # each is 1, 1536, 21, 30, 52
+        c = [u.flatten(2).transpose(1, 2) for u in c] # each is 1, 32760, 1536
+        for u in c:
+            print("u shape after reshaping: ", u.shape) # each is 1, 32760, 1536
         c = torch.cat([
             torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))],
                       dim=1) for u in c
         ])
+        print("c shape: ", c.shape) # 1, 32760, 1536
 
         # arguments
         new_kwargs = dict(x=x)

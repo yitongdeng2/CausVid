@@ -210,6 +210,7 @@ class MyInferencePipeline(torch.nn.Module):
 
         # Step 2: Temporal denoising loop
         num_blocks = num_frames // self.num_frame_per_block
+        print("num_blocks??", num_blocks)
         for block_index in range(num_blocks):
             noisy_input = noise[:, block_index *
                                 self.num_frame_per_block:(block_index + 1) * self.num_frame_per_block]
