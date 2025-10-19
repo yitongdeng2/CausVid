@@ -5,11 +5,99 @@ from causvid.models import (
 )
 from typing import List, Optional
 import torch
+import torch.nn.functional as F
+from wan.text2video import WanVAE
 
+# # VACE Helpers
+# def prepare_source(self, src_video, src_mask, src_ref_images, num_frames, image_size, device):
+#     area = image_size[0] * image_size[1]
+#     self.vid_proc.set_area(area)
+#     if area == 720*1280:
+#         self.vid_proc.set_seq_len(75600)
+#     elif area == 480*832:
+#         self.vid_proc.set_seq_len(32760)
+#     else:
+#         raise NotImplementedError(f'image_size {image_size} is not supported')
+
+#     image_size = (image_size[1], image_size[0])
+#     image_sizes = []
+#     for i, (sub_src_video, sub_src_mask) in enumerate(zip(src_video, src_mask)):
+#         if sub_src_mask is not None and sub_src_video is not None:
+#             src_video[i], src_mask[i], _, _, _ = self.vid_proc.load_video_pair(sub_src_video, sub_src_mask)
+#             src_video[i] = src_video[i].to(device)
+#             src_mask[i] = src_mask[i].to(device)
+#             src_mask[i] = torch.clamp((src_mask[i][:1, :, :, :] + 1) / 2, min=0, max=1)
+#             image_sizes.append(src_video[i].shape[2:])
+#         elif sub_src_video is None:
+#             src_video[i] = torch.zeros((3, num_frames, image_size[0], image_size[1]), device=device)
+#             src_mask[i] = torch.ones_like(src_video[i], device=device)
+#             image_sizes.append(image_size)
+#         else:
+#             src_video[i], _, _, _ = self.vid_proc.load_video(sub_src_video)
+#             src_video[i] = src_video[i].to(device)
+#             src_mask[i] = torch.ones_like(src_video[i], device=device)
+#             image_sizes.append(src_video[i].shape[2:])
+
+#     for i, ref_images in enumerate(src_ref_images):
+#         if ref_images is not None:
+#             image_size = image_sizes[i]
+#             for j, ref_img in enumerate(ref_images):
+#                 if ref_img is not None:
+#                     ref_img = Image.open(ref_img).convert("RGB")
+#                     ref_img = TF.to_tensor(ref_img).sub_(0.5).div_(0.5).unsqueeze(1)
+#                     if ref_img.shape[-2:] != image_size:
+#                         canvas_height, canvas_width = image_size
+#                         ref_height, ref_width = ref_img.shape[-2:]
+#                         white_canvas = torch.ones((3, 1, canvas_height, canvas_width), device=device) # [-1, 1]
+#                         scale = min(canvas_height / ref_height, canvas_width / ref_width)
+#                         new_height = int(ref_height * scale)
+#                         new_width = int(ref_width * scale)
+#                         resized_image = F.interpolate(ref_img.squeeze(1).unsqueeze(0), size=(new_height, new_width), mode='bilinear', align_corners=False).squeeze(0).unsqueeze(1)
+#                         top = (canvas_height - new_height) // 2
+#                         left = (canvas_width - new_width) // 2
+#                         white_canvas[:, :, top:top + new_height, left:left + new_width] = resized_image
+#                         ref_img = white_canvas
+#                     src_ref_images[i][j] = ref_img.to(device)
+#     return src_video, src_mask, src_ref_images
+
+# def vace_encode_frames(frames, ref_images, vae, masks=None):
+#     if ref_images is None:
+#         ref_images = [None] * len(frames)
+#     else:
+#         assert len(frames) == len(ref_images)
+
+#     if masks is None:
+#         latents = vae.encode(frames)
+#     else:
+#         masks = [torch.where(m > 0.5, 1.0, 0.0) for m in masks]
+#         inactive = [i * (1 - m) + 0 * m for i, m in zip(frames, masks)]
+#         reactive = [i * m + 0 * (1 - m) for i, m in zip(frames, masks)]
+#         inactive = vae.encode(inactive)
+#         reactive = vae.encode(reactive)
+#         latents = [torch.cat((u, c), dim=0) for u, c in zip(inactive, reactive)]
+
+#     cat_latents = []
+#     for latent, refs in zip(latents, ref_images):
+#         if refs is not None:
+#             if masks is None:
+#                 ref_latent = vae.encode(refs)
+#             else:
+#                 ref_latent = vae.encode(refs)
+#                 ref_latent = [torch.cat((u, torch.zeros_like(u)), dim=0) for u in ref_latent]
+#             assert all([x.shape[1] == 1 for x in ref_latent])
+#             latent = torch.cat([*ref_latent, latent], dim=1)
+#         cat_latents.append(latent)
+#     return cat_latents
+
+# def vace_latent(z, m):
+#         return [torch.cat([zz, mm], dim=0) for zz, mm in zip(z, m)]
+# # Helpers
 
 class MyInferencePipeline(torch.nn.Module):
     def __init__(self, generator, text_encoder, vae, args, dtype, device):
         super().__init__()
+        self.dtype=dtype
+        self.device=device
         # Step 1: Initialize all models
         self.generator = generator.to(device=device, dtype=dtype)
         self.text_encoder = text_encoder.to(device=device, dtype=dtype)
@@ -113,8 +201,11 @@ class MyInferencePipeline(torch.nn.Module):
         num_input_blocks = start_latents.shape[1] // self.num_frame_per_block if start_latents is not None else 0
 
         # SET VACE CONTEXT
-        vace_context = None
-        vace_context_scale = 0.5
+        # this vae might be different from the VAE wrapper, or maybe not, not 100% sure
+        z = torch.load("/home/yitong-moonlake/CausVid/prompt_files/extracted_vace_context.pt")
+        z = [item.to(device=self.device, dtype=self.dtype) for item in z]
+        vace_context = z
+        vace_context_scale = 0.0
         # SET VACE CONTEXT
 
         # Step 2: Temporal denoising loop

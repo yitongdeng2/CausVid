@@ -1,9 +1,45 @@
 from diffusers.configuration_utils import register_to_config
 from causvid.models.wan.causal_model import CausalWanAttentionBlock, CausalWanModel
 import torch.nn as nn
-from causvid.models.wan.wan_base.modules.model import sinusoidal_embedding_1d
+from causvid.models.wan.wan_base.modules.model import WanAttentionBlock, sinusoidal_embedding_1d
 import torch
-from VACE_essentials.vace_wan_model import VaceWanAttentionBlock
+
+class VaceWanAttentionBlock(WanAttentionBlock):
+    def __init__(
+            self,
+            cross_attn_type,
+            dim,
+            ffn_dim,
+            num_heads,
+            window_size=(-1, -1),
+            qk_norm=True,
+            cross_attn_norm=False,
+            eps=1e-6,
+            block_id=0
+    ):
+        super().__init__(cross_attn_type, dim, ffn_dim, num_heads, window_size, qk_norm, cross_attn_norm, eps)
+        self.block_id = block_id
+        if block_id == 0:
+            self.before_proj = nn.Linear(self.dim, self.dim)
+            nn.init.zeros_(self.before_proj.weight)
+            nn.init.zeros_(self.before_proj.bias)
+        self.after_proj = nn.Linear(self.dim, self.dim)
+        nn.init.zeros_(self.after_proj.weight)
+        nn.init.zeros_(self.after_proj.bias)
+
+    def forward(self, c, x, **kwargs):
+        print("Hello???")
+        if self.block_id == 0:
+            c = self.before_proj(c) + x
+            all_c = []
+        else:
+            all_c = list(torch.unbind(c))
+            c = all_c.pop(-1)
+        c = super().forward(c, **kwargs)
+        c_skip = self.after_proj(c)
+        all_c += [c_skip, c]
+        c = torch.stack(all_c)
+        return c
 
 class BaseCausalWanAttentionBlock(CausalWanAttentionBlock):
     def __init__(self,
